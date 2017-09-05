@@ -45,7 +45,9 @@ import android.os.Parcel;
 import android.os.RemoteException;
 import android.os.UserHandle;
 import android.os.UserManager;
+import android.os.Vibrator;
 import android.permission.PermissionManager;
+import android.provider.Settings;
 import android.telecom.CallAudioState;
 import android.telecom.CallEndpoint;
 import android.telecom.Connection;
@@ -67,6 +69,8 @@ import com.android.internal.telecom.IInCallService;
 import com.android.server.telecom.SystemStateHelper.SystemStateListener;
 import com.android.server.telecom.flags.FeatureFlags;
 import com.android.server.telecom.ui.NotificationChannelManager;
+
+import com.libremobileos.providers.LMOSettings;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -1827,6 +1831,17 @@ public class InCallController extends CallsManagerListenerBase implements
         Log.i(this, "onCallStateChanged: Call state changed for %s: %s -> %s", call.getId(),
                 CallState.toString(oldState), CallState.toString(newState));
         maybeTrackMicrophoneUse(isMuted());
+        boolean vibrateOnConnect = Settings.System.getIntForUser(mContext.getContentResolver(),
+            LMOSettings.System.VIBRATE_ON_CONNECT, 0, UserHandle.USER_CURRENT) >= 1;
+        boolean vibrateOnDisconnect = Settings.System.getIntForUser(mContext.getContentResolver(),
+            LMOSettings.System.VIBRATE_ON_DISCONNECT, 0, UserHandle.USER_CURRENT) >= 1;
+
+        if (oldState == CallState.DIALING && newState == CallState.ACTIVE && vibrateOnConnect) {
+            vibrate(100, 200, 0);
+        } else if (oldState == CallState.ACTIVE && newState == CallState.DISCONNECTED
+                && vibrateOnDisconnect) {
+            vibrate(100, 200, 0);
+        }
 
         // Handle transition to and from local voicemail.  If we start local voicemail for a call,
         // remove it from InCallService tracking.  If we stop local voicemail and go active again,
@@ -1861,6 +1876,13 @@ public class InCallController extends CallsManagerListenerBase implements
             }
         }
         updateCall(call);
+    }
+
+    public void vibrate(int v1, int p1, int v2) {
+        long[] pattern = new long[] {
+            0, v1, p1, v2
+        };
+        ((Vibrator) mContext.getSystemService(Context.VIBRATOR_SERVICE)).vibrate(pattern, -1);
     }
 
     @Override
