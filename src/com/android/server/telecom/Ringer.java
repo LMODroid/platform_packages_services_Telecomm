@@ -25,6 +25,7 @@ import android.annotation.NonNull;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.Person;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.media.AudioManager;
 import android.media.Ringtone;
@@ -361,6 +362,23 @@ public class Ringer {
                 } else {
                     if (DEBUG_RINGER) {
                         Log.i(this, "Create ringer with custom vibration effect");
+                    }
+                    final ContentResolver cr = mContext.getContentResolver();
+                    if (Settings.System.getInt(cr,
+                            LMOSettings.System.INCREASING_RING, 0) != 0) {
+                        float startVolume = Settings.System.getFloat(cr,
+                                LMOSettings.System.INCREASING_RING_START_VOLUME, 0.1f);
+                        int rampUpTime = Settings.System.getInt(cr,
+                                LMOSettings.System.INCREASING_RING_RAMP_UP_TIME, 20);
+                        mVolumeShaperConfig =
+                                new VolumeShaper.Configuration.Builder()
+                                        .setDuration(rampUpTime * 1000)
+                                        .setCurve(
+                                                new float[]{0.f, 1.f},
+                                                new float[]{startVolume, 1.f})
+                                        .setInterpolatorType(
+                                                VolumeShaper.Configuration.INTERPOLATOR_TYPE_LINEAR)
+                                        .build();
                     }
                     // Ramping ringtone is not enabled.
                     useCustomVibrationEffect = true;
