@@ -36,6 +36,7 @@ import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
@@ -102,6 +103,7 @@ import com.android.server.telecom.ClockProxy;
 import com.android.server.telecom.ConnectionServiceFocusManager;
 import com.android.server.telecom.ConnectionServiceFocusManager.ConnectionServiceFocusManagerFactory;
 import com.android.server.telecom.ConnectionServiceWrapper;
+import com.android.server.telecom.CreateConnectionResponse;
 import com.android.server.telecom.DefaultDialerCache;
 import com.android.server.telecom.EmergencyCallDiagnosticLogger;
 import com.android.server.telecom.EmergencyCallHelper;
@@ -110,6 +112,7 @@ import com.android.server.telecom.HeadsetMediaButton;
 import com.android.server.telecom.HeadsetMediaButtonFactory;
 import com.android.server.telecom.InCallController;
 import com.android.server.telecom.InCallControllerFactory;
+import com.android.server.telecom.DefaultDialerCache;
 import com.android.server.telecom.InCallTonePlayer;
 import com.android.server.telecom.InCallWakeLockController;
 import com.android.server.telecom.InCallWakeLockControllerFactory;
@@ -143,6 +146,8 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
+import org.mockito.InOrder;
+import org.mockito.Matchers;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
@@ -374,6 +379,7 @@ public class CallsManagerTest extends TelecomTestCase {
                 eq(WORK_HANDLE), any())).thenReturn(WORK_ACCOUNT);
         when(mToastFactory.makeText(any(), anyInt(), anyInt())).thenReturn(mToast);
         when(mToastFactory.makeText(any(), any(), anyInt())).thenReturn(mToast);
+        when(mFeatureFlags.separatelyBindToBtIncallService()).thenReturn(false);
     }
 
     @Override
@@ -3306,6 +3312,28 @@ public class CallsManagerTest extends TelecomTestCase {
         mCallsManager.addCallBeingSetup(targetCall);
         // query isInSelfManagedCall for a package that is in a call
         assertTrue(mCallsManager.isInSelfManagedCall(TEST_PACKAGE_NAME, TEST_USER_HANDLE));
+    }
+
+    @SmallTest
+    @Test
+    public void testBindToBtServiceSeparately() {
+        when(mFeatureFlags.separatelyBindToBtIncallService()).thenReturn(true);
+        Call call = addSpyCall(CallState.NEW);
+        CallFilteringResult result = new CallFilteringResult.Builder()
+                .setShouldAllowCall(true)
+                .setShouldReject(false)
+                .build();
+        when(mInCallController.bindToBTService(eq(call))).thenReturn(
+                CompletableFuture.completedFuture(true));
+        when(mInCallController.isBoundAndConnectedToBTService(any(UserHandle.class)))
+                .thenReturn(false);
+
+        mCallsManager.onCallFilteringComplete(call, result, false);
+
+        InOrder inOrder = inOrder(mInCallController, call, mInCallController);
+
+        inOrder.verify(mInCallController).bindToBTService(eq(call));
+        inOrder.verify(call).setState(eq(CallState.RINGING), anyString());
     }
 
 
