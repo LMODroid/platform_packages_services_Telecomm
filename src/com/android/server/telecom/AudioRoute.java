@@ -82,13 +82,9 @@ public class AudioRoute {
                 }
             }
             if (routeInfo == null) {
-                CompletableFuture<Boolean> future = new CompletableFuture<>();
-                mScheduledExecutorService.schedule(new Runnable() {
-                    @Override
-                    public void run() {
-                        createRetry(type, bluetoothAddress, audioManager, retryCount - 1);
-                    }
-                }, RETRY_TIME_DELAY, TimeUnit.MILLISECONDS);
+                mScheduledExecutorService.schedule(
+                        () -> createRetry(type, bluetoothAddress, audioManager, retryCount - 1),
+                        RETRY_TIME_DELAY, TimeUnit.MILLISECONDS);
             } else {
                 mAudioRouteFuture.complete(new AudioRoute(type, bluetoothAddress, routeInfo));
             }
@@ -105,6 +101,7 @@ public class AudioRoute {
     public static final int TYPE_BLUETOOTH_SCO = 5;
     public static final int TYPE_BLUETOOTH_HA = 6;
     public static final int TYPE_BLUETOOTH_LE = 7;
+    public static final int TYPE_STREAMING = 8;
     @IntDef(prefix = "TYPE", value = {
             TYPE_INVALID,
             TYPE_EARPIECE,
@@ -113,7 +110,8 @@ public class AudioRoute {
             TYPE_DOCK,
             TYPE_BLUETOOTH_SCO,
             TYPE_BLUETOOTH_HA,
-            TYPE_BLUETOOTH_LE
+            TYPE_BLUETOOTH_LE,
+            TYPE_STREAMING
     })
     @Retention(RetentionPolicy.SOURCE)
     public @interface AudioRouteType {}
@@ -145,6 +143,7 @@ public class AudioRoute {
         DEVICE_TYPE_STRINGS.put(TYPE_BLUETOOTH_SCO, "TYPE_BLUETOOTH_SCO");
         DEVICE_TYPE_STRINGS.put(TYPE_BLUETOOTH_HA, "TYPE_BLUETOOTH_HA");
         DEVICE_TYPE_STRINGS.put(TYPE_BLUETOOTH_LE, "TYPE_BLUETOOTH_LE");
+        DEVICE_TYPE_STRINGS.put(TYPE_STREAMING, "TYPE_STREAMING");
     }
 
     public static final HashMap<Integer, Integer> DEVICE_INFO_TYPETO_AUDIO_ROUTE_TYPE;
@@ -225,6 +224,7 @@ public class AudioRoute {
     void onDestRouteAsPendingRoute(boolean active, PendingAudioRoute pendingAudioRoute,
                                    AudioManager audioManager) {
         if (pendingAudioRoute.isActive() && !active) {
+            Log.i(this, "clearCommunicationDevice");
             audioManager.clearCommunicationDevice();
         } else if (active) {
             if (mAudioRouteType == TYPE_BLUETOOTH_SCO) {

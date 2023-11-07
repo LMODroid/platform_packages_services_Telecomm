@@ -127,6 +127,7 @@ import com.android.server.telecom.SystemStateHelper;
 import com.android.server.telecom.TelecomSystem;
 import com.android.server.telecom.Timeouts;
 import com.android.server.telecom.WiredHeadsetManager;
+import com.android.server.telecom.bluetooth.BluetoothDeviceManager;
 import com.android.server.telecom.bluetooth.BluetoothRouteManager;
 import com.android.server.telecom.bluetooth.BluetoothStateReceiver;
 import com.android.server.telecom.callfiltering.BlockedNumbersAdapter;
@@ -290,6 +291,7 @@ public class CallsManagerTest extends TelecomTestCase {
     @Mock private PhoneCapability mPhoneCapability;
     @Mock private CallAudioCommunicationDeviceTracker mCommunicationDeviceTracker;
     @Mock private CallStreamingNotification mCallStreamingNotification;
+    @Mock private BluetoothDeviceManager mBluetoothDeviceManager;
     @Mock private FeatureFlags mFeatureFlags;
     @Mock private IncomingCallFilterGraph mIncomingCallFilterGraph;
     private CallsManager mCallsManager;
@@ -366,6 +368,7 @@ public class CallsManagerTest extends TelecomTestCase {
                 mEmergencyCallDiagnosticLogger,
                 mCommunicationDeviceTracker,
                 mCallStreamingNotification,
+                mBluetoothDeviceManager,
                 mFeatureFlags,
                 (call, listener, context, timeoutsAdapter, lock) -> mIncomingCallFilterGraph);
 
