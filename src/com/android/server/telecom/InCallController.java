@@ -1932,7 +1932,8 @@ public class InCallController extends CallsManagerListenerBase implements
 
         // Actually try binding to the UI InCallService.
         if (inCallServiceConnection.connect(call) ==
-                InCallServiceConnection.CONNECTION_SUCCEEDED || call.isSelfManaged()) {
+                InCallServiceConnection.CONNECTION_SUCCEEDED || (call != null
+                && call.isSelfManaged())) {
             // Only connect to the non-ui InCallServices if we actually connected to the main UI
             // one, or if the call is self-managed (in which case we'd still want to keep Wear, BT,
             // etc. informed.
