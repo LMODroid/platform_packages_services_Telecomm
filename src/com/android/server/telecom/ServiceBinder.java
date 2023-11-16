@@ -305,16 +305,16 @@ public abstract class ServiceBinder {
     }
 
     final void decrementAssociatedCallCount() {
-        decrementAssociatedCallCount(false /*isSuppressingUnbind*/);
+        decrementAssociatedCallCountUpdated();
     }
 
-    final void decrementAssociatedCallCount(boolean isSuppressingUnbind) {
+    final void decrementAssociatedCallCountUpdated() {
         if (mAssociatedCallCount > 0) {
             mAssociatedCallCount--;
-            Log.v(this, "Call count decrement %d, %s", mAssociatedCallCount,
+            Log.i(this, "Call count decrement %d, %s", mAssociatedCallCount,
                     mComponentName.flattenToShortString());
 
-            if (!isSuppressingUnbind && mAssociatedCallCount == 0) {
+            if (mAssociatedCallCount == 0) {
                 unbind();
             }
         } else {

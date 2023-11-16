@@ -247,7 +247,21 @@ public class CreateConnectionProcessor implements CreateConnectionResponse {
                 mConnectionAttempt++;
                 mCall.setConnectionManagerPhoneAccount(attempt.connectionManagerPhoneAccount);
                 mCall.setTargetPhoneAccount(attempt.targetPhoneAccount);
-                mCall.setConnectionService(mService);
+                if (Objects.equals(attempt.connectionManagerPhoneAccount,
+                        attempt.targetPhoneAccount)) {
+                    mCall.setConnectionService(mService);
+                } else {
+                    PhoneAccountHandle remotePhoneAccount = attempt.targetPhoneAccount;
+                    ConnectionServiceWrapper mRemoteService =
+                            mRepository.getService(remotePhoneAccount.getComponentName(),
+                            remotePhoneAccount.getUserHandle());
+                    if (mRemoteService == null) {
+                        mCall.setConnectionService(mService);
+                    } else {
+                        Log.v(this, "attemptNextPhoneAccount Setting RCS = %s", mRemoteService);
+                        mCall.setConnectionService(mService, mRemoteService);
+                    }
+                }
                 setTimeoutIfNeeded(mService, attempt);
                 if (mCall.isIncoming()) {
                     if (mCall.isAdhocConferenceCall()) {
