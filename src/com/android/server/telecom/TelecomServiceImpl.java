@@ -2027,6 +2027,11 @@ public class TelecomServiceImpl {
                 pw.increaseIndent();
                 reflectAndPrintFlagConfigs(pw);
                 pw.decreaseIndent();
+
+                pw.println("TransactionManager: ");
+                pw.increaseIndent();
+                TransactionManager.getInstance().dump(pw);
+                pw.decreaseIndent();
             }
             if (isTimeLineView) {
                 Log.dumpEventsTimeline(pw);

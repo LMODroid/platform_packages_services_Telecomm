@@ -700,7 +700,8 @@ public class CallsManager extends Call.ListenerBase
         mCallLogManager = new CallLogManager(context, phoneAccountRegistrar, mMissedCallNotifier,
                 mAnomalyReporter, featureFlags);
         mConnectionServiceRepository =
-                new ConnectionServiceRepository(mPhoneAccountRegistrar, mContext, mLock, this);
+                new ConnectionServiceRepository(mPhoneAccountRegistrar, mContext, mLock, this,
+                        featureFlags);
         mInCallWakeLockController = inCallWakeLockControllerFactory.create(context, this);
         mClockProxy = clockProxy;
         mToastFactory = toastFactory;
@@ -5880,8 +5881,7 @@ public class CallsManager extends Call.ListenerBase
             return;
         }
         ConnectionServiceWrapper service = mConnectionServiceRepository.getService(
-                phoneAccountHandle.getComponentName(), phoneAccountHandle.getUserHandle(),
-                mFeatureFlags);
+                phoneAccountHandle.getComponentName(), phoneAccountHandle.getUserHandle());
         if (service == null) {
             Log.i(this, "Found no connection service.");
             return;
@@ -5906,8 +5906,7 @@ public class CallsManager extends Call.ListenerBase
             return;
         }
         ConnectionServiceWrapper service = mConnectionServiceRepository.getService(
-                phoneAccountHandle.getComponentName(), phoneAccountHandle.getUserHandle(),
-                mFeatureFlags);
+                phoneAccountHandle.getComponentName(), phoneAccountHandle.getUserHandle());
         if (service == null) {
             Log.i(this, "Found no connection service.");
             return;

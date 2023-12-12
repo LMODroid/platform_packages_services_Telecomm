@@ -130,6 +130,7 @@ public class TransactionalServiceWrapper implements
         return mTransactionManager;
     }
 
+    @VisibleForTesting
     public PhoneAccountHandle getPhoneAccountHandle() {
         return mPhoneAccountHandle;
     }
@@ -166,7 +167,7 @@ public class TransactionalServiceWrapper implements
         return callCount;
     }
 
-    public void cleanupTransactionalServiceWrapper() {
+    private void cleanupTransactionalServiceWrapper() {
         for (Call call : mTrackedCalls.values()) {
             mCallsManager.markCallAsDisconnected(call,
                     new DisconnectCause(DisconnectCause.ERROR, "process died"));
@@ -179,7 +180,7 @@ public class TransactionalServiceWrapper implements
      **                        ICallControl: Client --> Server                                **
      **********************************************************************************************
      */
-    public final ICallControl mICallControl = new ICallControl.Stub() {
+    private final ICallControl mICallControl = new ICallControl.Stub() {
         @Override
         public void setActive(String callId, android.os.ResultReceiver callback)
                 throws RemoteException {
@@ -346,7 +347,7 @@ public class TransactionalServiceWrapper implements
         }
     };
 
-    public void addTransactionsToManager(VoipCallTransaction transaction,
+    private void addTransactionsToManager(VoipCallTransaction transaction,
             ResultReceiver callback) {
         Log.d(TAG, "addTransactionsToManager");
 
