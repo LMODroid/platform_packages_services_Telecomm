@@ -181,16 +181,19 @@ public class PhoneAccountRegistrar {
     private interface PhoneAccountRegistrarWriteLock {}
     private final PhoneAccountRegistrarWriteLock mWriteLock =
             new PhoneAccountRegistrarWriteLock() {};
+    private final com.android.internal.telephony.flags.FeatureFlags mTelephonyFeatureFlags;
 
     @VisibleForTesting
     public PhoneAccountRegistrar(Context context, TelecomSystem.SyncRoot lock,
-            DefaultDialerCache defaultDialerCache, AppLabelProxy appLabelProxy) {
-        this(context, lock, FILE_NAME, defaultDialerCache, appLabelProxy);
+            DefaultDialerCache defaultDialerCache, AppLabelProxy appLabelProxy,
+            com.android.internal.telephony.flags.FeatureFlags telephonyFeatureFlags) {
+        this(context, lock, FILE_NAME, defaultDialerCache, appLabelProxy, telephonyFeatureFlags);
     }
 
     @VisibleForTesting
     public PhoneAccountRegistrar(Context context, TelecomSystem.SyncRoot lock, String fileName,
-            DefaultDialerCache defaultDialerCache, AppLabelProxy appLabelProxy) {
+            DefaultDialerCache defaultDialerCache, AppLabelProxy appLabelProxy,
+            com.android.internal.telephony.flags.FeatureFlags telephonyFeatureFlags) {
 
         mAtomicFile = new AtomicFile(new File(context.getFilesDir(), fileName));
 
@@ -203,6 +206,13 @@ public class PhoneAccountRegistrar {
         mTelephonyManager = (TelephonyManager) mContext.getSystemService(Context.TELEPHONY_SERVICE);
         mAppLabelProxy = appLabelProxy;
         mCurrentUserHandle = Process.myUserHandle();
+
+        if (telephonyFeatureFlags != null) {
+            mTelephonyFeatureFlags = telephonyFeatureFlags;
+        } else {
+            mTelephonyFeatureFlags =
+                    new com.android.internal.telephony.flags.FeatureFlagsImpl();
+        }
 
         // register context based receiver to clean up orphan phone accounts
         IntentFilter intentFilter = new IntentFilter(Intent.ACTION_MANAGED_PROFILE_REMOVED);
@@ -697,6 +707,24 @@ public class PhoneAccountRegistrar {
         }
     }
 
+    private boolean isMatchedUser(PhoneAccount account, UserHandle userHandle) {
+        if (account == null) {
+            return false;
+        }
+
+        if (userHandle == null) {
+            Log.w(this, "userHandle is null in isVisibleForUser");
+            return false;
+        }
+
+        UserHandle phoneAccountUserHandle = account.getAccountHandle().getUserHandle();
+        if (phoneAccountUserHandle == null) {
+            return false;
+        }
+
+        return phoneAccountUserHandle.equals(userHandle);
+    }
+
     private boolean isVisibleForUser(PhoneAccount account, UserHandle userHandle,
             boolean acrossProfiles) {
         if (account == null) {
@@ -763,11 +791,11 @@ public class PhoneAccountRegistrar {
      */
     public List<PhoneAccountHandle> getAllPhoneAccountHandles(UserHandle userHandle,
             boolean crossUserAccess) {
-        return getPhoneAccountHandles(0, null, null, false, userHandle, crossUserAccess);
+        return getPhoneAccountHandles(0, null, null, false, userHandle, crossUserAccess, true);
     }
 
     public List<PhoneAccount> getAllPhoneAccounts(UserHandle userHandle, boolean crossUserAccess) {
-        return getPhoneAccounts(0, null, null, false, mCurrentUserHandle, crossUserAccess);
+        return getPhoneAccounts(0, null, null, false, mCurrentUserHandle, crossUserAccess, true);
     }
 
     /**
@@ -858,7 +886,7 @@ public class PhoneAccountRegistrar {
     public List<PhoneAccountHandle> getAllPhoneAccountHandlesForPackage(UserHandle userHandle,
             String packageName) {
         return getPhoneAccountHandles(0, null, packageName, true /* includeDisabled */, userHandle,
-                true /* crossUserAccess */);
+                true /* crossUserAccess */, true);
     }
 
     /**
@@ -1490,7 +1518,19 @@ public class PhoneAccountRegistrar {
             UserHandle userHandle,
             boolean crossUserAccess) {
         return getPhoneAccountHandles(capabilities, 0 /*excludedCapabilities*/, uriScheme,
-                packageName, includeDisabledAccounts, userHandle, crossUserAccess);
+                packageName, includeDisabledAccounts, userHandle, crossUserAccess, false);
+    }
+
+    private List<PhoneAccountHandle> getPhoneAccountHandles(
+            int capabilities,
+            String uriScheme,
+            String packageName,
+            boolean includeDisabledAccounts,
+            UserHandle userHandle,
+            boolean crossUserAccess,
+            boolean includeAll) {
+        return getPhoneAccountHandles(capabilities, 0 /*excludedCapabilities*/, uriScheme,
+                packageName, includeDisabledAccounts, userHandle, crossUserAccess, includeAll);
     }
 
     /**
@@ -1505,11 +1545,24 @@ public class PhoneAccountRegistrar {
             boolean includeDisabledAccounts,
             UserHandle userHandle,
             boolean crossUserAccess) {
+        return getPhoneAccountHandles(capabilities, excludedCapabilities, uriScheme, packageName,
+                includeDisabledAccounts, userHandle, crossUserAccess, false);
+    }
+
+    private List<PhoneAccountHandle> getPhoneAccountHandles(
+            int capabilities,
+            int excludedCapabilities,
+            String uriScheme,
+            String packageName,
+            boolean includeDisabledAccounts,
+            UserHandle userHandle,
+            boolean crossUserAccess,
+            boolean includeAll) {
         List<PhoneAccountHandle> handles = new ArrayList<>();
 
         for (PhoneAccount account : getPhoneAccounts(
                 capabilities, excludedCapabilities, uriScheme, packageName,
-                includeDisabledAccounts, userHandle, crossUserAccess)) {
+                includeDisabledAccounts, userHandle, crossUserAccess, includeAll)) {
             handles.add(account.getAccountHandle());
         }
         return handles;
@@ -1523,7 +1576,19 @@ public class PhoneAccountRegistrar {
             UserHandle userHandle,
             boolean crossUserAccess) {
         return getPhoneAccounts(capabilities, 0 /*excludedCapabilities*/, uriScheme, packageName,
-                includeDisabledAccounts, userHandle, crossUserAccess);
+                includeDisabledAccounts, userHandle, crossUserAccess, false);
+    }
+
+    private List<PhoneAccount> getPhoneAccounts(
+            int capabilities,
+            String uriScheme,
+            String packageName,
+            boolean includeDisabledAccounts,
+            UserHandle userHandle,
+            boolean crossUserAccess,
+            boolean includeAll) {
+        return getPhoneAccounts(capabilities, 0 /*excludedCapabilities*/, uriScheme, packageName,
+                includeDisabledAccounts, userHandle, crossUserAccess, includeAll);
     }
 
     /**
@@ -1545,7 +1610,22 @@ public class PhoneAccountRegistrar {
             boolean includeDisabledAccounts,
             UserHandle userHandle,
             boolean crossUserAccess) {
+        return getPhoneAccounts(capabilities, excludedCapabilities, uriScheme, packageName,
+                includeDisabledAccounts, userHandle, crossUserAccess, false);
+    }
+
+    @VisibleForTesting
+    public List<PhoneAccount> getPhoneAccounts(
+            int capabilities,
+            int excludedCapabilities,
+            String uriScheme,
+            String packageName,
+            boolean includeDisabledAccounts,
+            UserHandle userHandle,
+            boolean crossUserAccess,
+            boolean includeAll) {
         List<PhoneAccount> accounts = new ArrayList<>(mState.accounts.size());
+        List<PhoneAccount> matchedAccounts = new ArrayList<>(mState.accounts.size());
         for (PhoneAccount m : mState.accounts) {
             if (!(m.isEnabled() || includeDisabledAccounts)) {
                 // Do not include disabled accounts.
@@ -1579,12 +1659,22 @@ public class PhoneAccountRegistrar {
                 // Not the right package name; skip this one.
                 continue;
             }
+            if (isMatchedUser(m, userHandle)) {
+                matchedAccounts.add(m);
+            }
             if (!crossUserAccess && !isVisibleForUser(m, userHandle, false)) {
                 // Account is not visible for the current user; skip this one.
                 continue;
             }
             accounts.add(m);
         }
+
+        // Return the account if it exactly matches. Otherwise, return any account that's visible
+        if (mTelephonyFeatureFlags.workProfileApiSplit() && !crossUserAccess && !includeAll
+                && !matchedAccounts.isEmpty()) {
+            return matchedAccounts;
+        }
+
         return accounts;
     }
 

@@ -197,6 +197,7 @@ public class TelecomServiceImplTest extends TelecomTestCase {
     @Mock private TransactionManager mTransactionManager;
     @Mock private AnomalyReporterAdapter mAnomalyReporterAdapter;
     @Mock private FeatureFlags mFeatureFlags;
+    @Mock private com.android.internal.telephony.flags.FeatureFlags mTelephonyFeatureFlags;
 
     @Mock private InCallController mInCallController;
 
@@ -251,6 +252,7 @@ public class TelecomServiceImplTest extends TelecomTestCase {
                 mSubscriptionManagerAdapter,
                 mSettingsSecureAdapter,
                 mFeatureFlags,
+                mTelephonyFeatureFlags,
                 mLock);
         telecomServiceImpl.setTransactionManager(mTransactionManager);
         telecomServiceImpl.setAnomalyReporterAdapter(mAnomalyReporterAdapter);
@@ -270,6 +272,7 @@ public class TelecomServiceImplTest extends TelecomTestCase {
         mPackageManager = mContext.getPackageManager();
         when(mPackageManager.getPackageUid(anyString(), eq(0))).thenReturn(Binder.getCallingUid());
         when(mFeatureFlags.earlyBindingToIncallService()).thenReturn(true);
+        when(mTelephonyFeatureFlags.workProfileApiSplit()).thenReturn(false);
     }
 
     @Override
@@ -535,10 +538,64 @@ public class TelecomServiceImplTest extends TelecomTestCase {
 
         assertEquals(fullPHList,
                 mTSIBinder.getCallCapablePhoneAccounts(
-                        true, DEFAULT_DIALER_PACKAGE, null).getList());
+                        true, DEFAULT_DIALER_PACKAGE, null, false).getList());
         assertEquals(smallPHList,
                 mTSIBinder.getCallCapablePhoneAccounts(
-                        false, DEFAULT_DIALER_PACKAGE, null).getList());
+                        false, DEFAULT_DIALER_PACKAGE, null, false).getList());
+    }
+
+    @SmallTest
+    @Test
+    public void testGetCallCapablePhoneAccountsAcrossProfiles() throws RemoteException {
+        List<PhoneAccountHandle> fullPHList = List.of(TEL_PA_HANDLE_16, SIP_PA_HANDLE_17);
+        List<PhoneAccountHandle> smallPHList = List.of(SIP_PA_HANDLE_17);
+
+        // Returns all accounts when getCallCapablePhoneAccounts is called with across user.
+        doReturn(fullPHList).when(mFakePhoneAccountRegistrar).getCallCapablePhoneAccounts(
+                nullable(String.class), anyBoolean(), nullable(UserHandle.class), eq(true));
+        // Returns one account when getCallCapablePhoneAccounts is called without across user.
+        doReturn(smallPHList).when(mFakePhoneAccountRegistrar).getCallCapablePhoneAccounts(
+                nullable(String.class), anyBoolean(), nullable(UserHandle.class), eq(false));
+        // With across user permission
+        doReturn(PackageManager.PERMISSION_GRANTED).when(mContext).checkCallingOrSelfPermission(
+                eq(Manifest.permission.INTERACT_ACROSS_USERS));
+
+        assertEquals(fullPHList,
+                mTSIBinder.getCallCapablePhoneAccounts(
+                        true, DEFAULT_DIALER_PACKAGE, null, false).getList());
+
+        // Without across user permission
+        doReturn(PackageManager.PERMISSION_DENIED).when(mContext).checkCallingOrSelfPermission(
+                eq(Manifest.permission.INTERACT_ACROSS_USERS));
+
+        assertEquals(smallPHList,
+                mTSIBinder.getCallCapablePhoneAccounts(
+                        true, DEFAULT_DIALER_PACKAGE, null, false).getList());
+
+        // Enabled the feature flag of the work profile split mode
+        when(mTelephonyFeatureFlags.workProfileApiSplit()).thenReturn(true);
+
+        // With across user permission
+        doReturn(PackageManager.PERMISSION_GRANTED).when(mContext).checkCallingOrSelfPermission(
+                eq(Manifest.permission.INTERACT_ACROSS_PROFILES));
+
+        assertEquals(fullPHList,
+                mTSIBinder.getCallCapablePhoneAccounts(
+                        true, DEFAULT_DIALER_PACKAGE, null, true).getList());
+        assertEquals(smallPHList,
+                mTSIBinder.getCallCapablePhoneAccounts(
+                        true, DEFAULT_DIALER_PACKAGE, null, false).getList());
+
+        // Without across user permission
+        doReturn(PackageManager.PERMISSION_DENIED).when(mContext).checkCallingOrSelfPermission(
+                eq(Manifest.permission.INTERACT_ACROSS_PROFILES));
+
+        assertEquals(smallPHList,
+                mTSIBinder.getCallCapablePhoneAccounts(
+                        true, DEFAULT_DIALER_PACKAGE, null, true).getList());
+        assertEquals(smallPHList,
+                mTSIBinder.getCallCapablePhoneAccounts(
+                        true, DEFAULT_DIALER_PACKAGE, null, false).getList());
     }
 
     @SmallTest
@@ -550,7 +607,7 @@ public class TelecomServiceImplTest extends TelecomTestCase {
                 argThat(new AnyStringIn(enforcedPermissions)), anyString());
 
         assertThrows(SecurityException.class,
-                () -> mTSIBinder.getCallCapablePhoneAccounts(true, "", null));
+                () -> mTSIBinder.getCallCapablePhoneAccounts(true, "", null, false));
     }
 
     @SmallTest
