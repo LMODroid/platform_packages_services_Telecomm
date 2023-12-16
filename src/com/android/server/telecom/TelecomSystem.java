@@ -245,7 +245,7 @@ public class TelecomSystem {
         try {
             mPhoneAccountRegistrar = new PhoneAccountRegistrar(mContext, mLock, defaultDialerCache,
                     packageName -> AppLabelProxy.Util.getAppLabel(
-                            mContext.getPackageManager(), packageName));
+                            mContext.getPackageManager(), packageName), null);
 
             mContactsAsyncHelper = contactsAsyncHelperFactory.create(
                     new ContactsAsyncHelper.ContentResolverAdapter() {
@@ -485,6 +485,7 @@ public class TelecomSystem {
                     new TelecomServiceImpl.SubscriptionManagerAdapterImpl(),
                     new TelecomServiceImpl.SettingsSecureAdapterImpl(),
                     featureFlags,
+                    null,
                     mLock);
         } finally {
             Log.endSession();

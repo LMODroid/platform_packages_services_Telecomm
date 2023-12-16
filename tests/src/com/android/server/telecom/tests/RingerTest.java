@@ -133,7 +133,7 @@ public class RingerTest extends TelecomTestCase {
         mContext = spy(mComponentContextFixture.getTestDouble().getApplicationContext());
         when(mFeatureFlags.telecomResolveHiddenDependencies()).thenReturn(true);
         doReturn(URI_VIBRATION_EFFECT).when(spyVibrationEffectProxy).get(any(), any());
-        when(mockPlayerFactory.createPlayer(anyInt())).thenReturn(mockTonePlayer);
+        when(mockPlayerFactory.createPlayer(any(Call.class), anyInt())).thenReturn(mockTonePlayer);
         mockAudioManager = mContext.getSystemService(AudioManager.class);
         when(mockAudioManager.getRingerMode()).thenReturn(AudioManager.RINGER_MODE_NORMAL);
         when(mockVibrator.getInfo()).thenReturn(mockVibratorInfo);
@@ -147,6 +147,8 @@ public class RingerTest extends TelecomTestCase {
         when(mockCall2.getState()).thenReturn(CallState.RINGING);
         when(mockCall1.getAssociatedUser()).thenReturn(PA_HANDLE.getUserHandle());
         when(mockCall2.getAssociatedUser()).thenReturn(PA_HANDLE.getUserHandle());
+        when(mockCall1.getTargetPhoneAccount()).thenReturn(PA_HANDLE);
+        when(mockCall2.getTargetPhoneAccount()).thenReturn(PA_HANDLE);
         // Set BT active state in tests to ensure that we do not end up blocking tests for 1 sec
         // waiting for BT to connect in unit tests by default.
         asyncRingtonePlayer.updateBtActiveState(true);
@@ -180,9 +182,9 @@ public class RingerTest extends TelecomTestCase {
         when(mFeatureFlags.useDeviceProvidedSerializedRingerVibration()).thenReturn(true);
         mockVibrationResourceValues(
                 """
-                    <vibration>
+                    <vibration-effect>
                         <predefined-effect name="click"/>
-                    </vibration>
+                    </vibration-effect>
                 """,
                 /* useSimpleVibration= */ true);
         when(mockVibratorInfo.areVibrationFeaturesSupported(any())).thenReturn(true);
@@ -199,7 +201,7 @@ public class RingerTest extends TelecomTestCase {
         when(mFeatureFlags.useDeviceProvidedSerializedRingerVibration()).thenReturn(false);
         mockVibrationResourceValues(
                 """
-                    <vibration>
+                    <vibration-effect>
                         <waveform-effect>
                             <waveform-entry durationMs="100" amplitude="0"/>
                             <repeating>
@@ -207,7 +209,7 @@ public class RingerTest extends TelecomTestCase {
                                 <waveform-entry durationMs="700" amplitude="0"/>
                             </repeating>
                         </waveform-effect>
-                    </vibration>
+                    </vibration-effect>
                 """,
                 /* useSimpleVibration= */ false);
         when(mockVibratorInfo.areVibrationFeaturesSupported(any())).thenReturn(true);
@@ -223,7 +225,7 @@ public class RingerTest extends TelecomTestCase {
         when(mFeatureFlags.useDeviceProvidedSerializedRingerVibration()).thenReturn(true);
         mockVibrationResourceValues(
                 """
-                    <vibration>
+                    <vibration-effect>
                         <waveform-effect>
                             <waveform-entry durationMs="100" amplitude="0"/>
                             <repeating>
@@ -231,7 +233,7 @@ public class RingerTest extends TelecomTestCase {
                                 <waveform-entry durationMs="700" amplitude="0"/>
                             </repeating>
                         </waveform-effect>
-                    </vibration>
+                    </vibration-effect>
                 """,
                 /* useSimpleVibration= */ false);
         when(mockVibratorInfo.areVibrationFeaturesSupported(any())).thenReturn(true);
@@ -249,9 +251,9 @@ public class RingerTest extends TelecomTestCase {
         when(mFeatureFlags.useDeviceProvidedSerializedRingerVibration()).thenReturn(true);
         mockVibrationResourceValues(
                 """
-                    <vibration>
+                    <vibration-effect>
                         <predefined-effect name="click"/>
-                    </vibration>
+                    </vibration-effect>
                 """,
                 /* useSimpleVibration= */ false);
         when(mockVibratorInfo.areVibrationFeaturesSupported(any())).thenReturn(true);
@@ -278,9 +280,9 @@ public class RingerTest extends TelecomTestCase {
         when(mFeatureFlags.useDeviceProvidedSerializedRingerVibration()).thenReturn(true);
         mockVibrationResourceValues(
                 """
-                    <vibration>
+                    <vibration-effect>
                         <predefined-effect name="click"/>
-                    </vibration>
+                    </vibration-effect>
                 """,
                 /* useSimpleVibration= */ false);
         when(mockVibratorInfo.areVibrationFeaturesSupported(

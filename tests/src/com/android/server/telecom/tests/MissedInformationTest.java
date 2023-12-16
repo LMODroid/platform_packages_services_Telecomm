@@ -153,6 +153,8 @@ public class MissedInformationTest extends TelecomSystemTest {
         setUpEmergencyCall();
         when(mEmergencyCall.getAssociatedUser()).
                 thenReturn(mPhoneAccountA0.getAccountHandle().getUserHandle());
+        when(mEmergencyCall.getTargetPhoneAccount())
+                .thenReturn(mPhoneAccountA0.getAccountHandle());
         mCallsManager.addCall(mEmergencyCall);
         assertTrue(mCallsManager.isInEmergencyCall());
 
@@ -359,7 +361,7 @@ public class MissedInformationTest extends TelecomSystemTest {
         setUpIncomingCall();
         doReturn(mNotificationManager).when(mSpyContext)
                 .getSystemService(Context.NOTIFICATION_SERVICE);
-        doReturn(false).when(mNotificationManager).matchesCallFilter(any(Uri.class));
+        doReturn(false).when(mNotificationManager).matchesCallFilter(any(Bundle.class));
         doReturn(false).when(mIncomingCall).wasDndCheckComputedForCall();
         mCallsManager.getRinger().setNotificationManager(mNotificationManager);
 
@@ -370,7 +372,7 @@ public class MissedInformationTest extends TelecomSystemTest {
 
         // Wait for ringer attributes build completed
         verify(mNotificationManager, timeout(TEST_TIMEOUT_MILLIS))
-                .matchesCallFilter(any(Uri.class));
+                .matchesCallFilter(any(Bundle.class));
         mCallsManager.getRinger().waitForAttributesCompletion();
 
         mCallsManager.markCallAsDisconnected(mIncomingCall,
@@ -418,7 +420,7 @@ public class MissedInformationTest extends TelecomSystemTest {
                 null, mCallsManager.getPhoneNumberUtilsAdapter(), null,
                 null, null, mPhoneAccountA0.getAccountHandle(),
                 Call.CALL_DIRECTION_INCOMING, false, false,
-                mClockProxy, null));
+                mClockProxy, null, mFeatureFlags));
         doReturn(1L).when(mIncomingCall).getStartRingTime();
         doAnswer((x) -> {
             mCountDownLatch.countDown();

@@ -23,6 +23,7 @@ import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
@@ -72,6 +73,8 @@ import android.widget.Toast;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telecom.IVideoProvider;
 import com.android.internal.util.Preconditions;
+import com.android.server.telecom.flags.FeatureFlags;
+import com.android.server.telecom.flags.Flags;
 import com.android.server.telecom.stats.CallFailureCause;
 import com.android.server.telecom.stats.CallStateChangedAtomWriter;
 import com.android.server.telecom.ui.ToastFactory;
@@ -324,6 +327,7 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
                 }
             };
 
+    private final boolean mIsModifyStatePermissionGranted;
     /**
      * One of CALL_DIRECTION_INCOMING, CALL_DIRECTION_OUTGOING, or CALL_DIRECTION_UNKNOWN
      */
@@ -433,6 +437,13 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
      * The presentation requirements for the handle. See {@link TelecomManager} for valid values.
      */
     private int mCallerDisplayNamePresentation;
+
+    /**
+     * The remote connection service which is attempted or already connecting this call. This is set
+     * to a non-null value only when a connection manager phone account is in use. When set, this
+     * will correspond to the target phone account of the {@link Call}.
+     */
+    private ConnectionServiceWrapper mRemoteConnectionService;
 
     /**
      * The connection service which is attempted or already connecting this call.
@@ -786,6 +797,8 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
      */
     private CompletableFuture<Boolean> mDisconnectFuture;
 
+    private FeatureFlags mFlags;
+
     /**
      * Persists the specified parameters and initializes the new instance.
      * @param context The context.
@@ -817,11 +830,12 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
             boolean shouldAttachToExistingConnection,
             boolean isConference,
             ClockProxy clockProxy,
-            ToastFactory toastFactory) {
+            ToastFactory toastFactory,
+            FeatureFlags featureFlags) {
         this(callId, context, callsManager, lock, repository, phoneNumberUtilsAdapter,
                handle, null, gatewayInfo, connectionManagerPhoneAccountHandle,
                targetPhoneAccountHandle, callDirection, shouldAttachToExistingConnection,
-               isConference, clockProxy, toastFactory);
+               isConference, clockProxy, toastFactory, featureFlags);
 
     }
 
@@ -841,8 +855,9 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
             boolean shouldAttachToExistingConnection,
             boolean isConference,
             ClockProxy clockProxy,
-            ToastFactory toastFactory) {
-
+            ToastFactory toastFactory,
+            FeatureFlags featureFlags) {
+        mFlags = featureFlags;
         mId = callId;
         mConnectionId = callId;
         mState = (isConference && callDirection != CALL_DIRECTION_INCOMING &&
@@ -873,6 +888,8 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
         mStartRingTime = 0;
 
         mCallStateChangedAtomWriter.setExistingCallCount(callsManager.getCalls().size());
+        mIsModifyStatePermissionGranted =
+                isModifyPhoneStatePermissionGranted(getDelegatePhoneAccountHandle());
     }
 
     /**
@@ -892,6 +909,7 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
      * connection, regardless of whether it's incoming or outgoing.
      * @param connectTimeMillis The connection time of the call.
      * @param clockProxy
+     * @param featureFlags The telecom feature flags.
      */
     Call(
             String callId,
@@ -910,11 +928,13 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
             long connectTimeMillis,
             long connectElapsedTimeMillis,
             ClockProxy clockProxy,
-            ToastFactory toastFactory) {
+            ToastFactory toastFactory,
+            FeatureFlags featureFlags) {
         this(callId, context, callsManager, lock, repository,
                 phoneNumberUtilsAdapter, handle, gatewayInfo,
                 connectionManagerPhoneAccountHandle, targetPhoneAccountHandle, callDirection,
-                shouldAttachToExistingConnection, isConference, clockProxy, toastFactory);
+                shouldAttachToExistingConnection, isConference, clockProxy, toastFactory,
+                featureFlags);
 
         mConnectTimeMillis = connectTimeMillis;
         mConnectElapsedTimeMillis = connectElapsedTimeMillis;
@@ -1357,8 +1377,10 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
                 Log.addEvent(this, event, stringData);
             }
 
-            for (CallStateListener listener : mCallStateListeners) {
-                listener.onCallStateChanged(newState);
+            if (mFlags.transactionalCsVerifier()) {
+                for (CallStateListener listener : mCallStateListeners) {
+                    listener.onCallStateChanged(newState);
+                }
             }
 
             mCallStateChangedAtomWriter
@@ -1766,8 +1788,12 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
                     accountHandle.getComponentName().getPackageName(),
                     mContext.getPackageManager());
             // Set the associated user for the call for MT calls based on the target phone account.
-            if (isIncoming() && !accountHandle.getUserHandle().equals(mAssociatedUser)) {
-                setAssociatedUser(accountHandle.getUserHandle());
+            UserHandle associatedUser = UserUtil.getAssociatedUserForCall(
+                    mFlags.associatedUserRefactorForWorkProfile(),
+                    mCallsManager.getPhoneAccountRegistrar(), mCallsManager.getCurrentUserHandle(),
+                    accountHandle);
+            if (isIncoming() && !associatedUser.equals(mAssociatedUser)) {
+                setAssociatedUser(associatedUser);
             }
         }
     }
@@ -2346,11 +2372,25 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
 
     @VisibleForTesting
     public void setConnectionService(ConnectionServiceWrapper service) {
+        setConnectionService(service, null);
+    }
+
+    @VisibleForTesting
+    public void setConnectionService(
+            ConnectionServiceWrapper service,
+            ConnectionServiceWrapper remoteService
+    ) {
         Preconditions.checkNotNull(service);
 
         clearConnectionService();
 
         service.incrementAssociatedCallCount();
+
+        if (mFlags.updatedRcsCallCountTracking() && remoteService != null) {
+            remoteService.incrementAssociatedCallCount();
+            mRemoteConnectionService = remoteService;
+        }
+
         mConnectionService = service;
         mAnalytics.setCallConnectionService(service.getComponentName().flattenToShortString());
         mConnectionService.addCall(this);
@@ -2358,10 +2398,12 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
 
     /**
      * Perform an in-place replacement of the {@link ConnectionServiceWrapper} for this Call.
-     * Removes the call from its former {@link ConnectionServiceWrapper}, ensuring that the
-     * ConnectionService is NOT unbound if the call count hits zero.
-     * This is used by the {@link ConnectionServiceWrapper} when handling {@link Connection} and
-     * {@link Conference} additions via a ConnectionManager.
+     * Removes the call from its former {@link ConnectionServiceWrapper}, while still ensuring the
+     * former {@link ConnectionServiceWrapper} is tracked as the mRemoteConnectionService for this
+     * call so that the associatedCallCount of that {@link ConnectionServiceWrapper} is accurately
+     * tracked until it is supposed to be unbound.
+     * This method is used by the {@link ConnectionServiceWrapper} when handling {@link Connection}
+     * and {@link Conference} additions via a ConnectionManager.
      * The original {@link android.telecom.ConnectionService} will directly add external calls and
      * conferences to Telecom as well as the ConnectionManager, which will add to Telecom.  In these
      * cases since its first added to via the original CS, we want to change the CS responsible for
@@ -2374,9 +2416,18 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
 
         if (mConnectionService != null) {
             ConnectionServiceWrapper serviceTemp = mConnectionService;
+
+            if (mFlags.updatedRcsCallCountTracking()) {
+                // Continue to track the former CS for this call so that it doesn't unbind early:
+                mRemoteConnectionService = serviceTemp;
+            }
+
             mConnectionService = null;
             serviceTemp.removeCall(this);
-            serviceTemp.decrementAssociatedCallCount(true /*isSuppressingUnbind*/);
+
+            if (!mFlags.updatedRcsCallCountTracking()) {
+                serviceTemp.decrementAssociatedCallCount(true /*isSuppressingUnbind*/);
+            }
         }
 
         service.incrementAssociatedCallCount();
@@ -2390,6 +2441,8 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
     void clearConnectionService() {
         if (mConnectionService != null) {
             ConnectionServiceWrapper serviceTemp = mConnectionService;
+            ConnectionServiceWrapper remoteServiceTemp = mRemoteConnectionService;
+            mRemoteConnectionService = null;
             mConnectionService = null;
             serviceTemp.removeCall(this);
 
@@ -2400,6 +2453,10 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
             // necessary, but cleaning up mConnectionService prior to triggering an unbind is good
             // to do.
             decrementAssociatedCallCount(serviceTemp);
+
+            if (mFlags.updatedRcsCallCountTracking() && remoteServiceTemp != null) {
+                decrementAssociatedCallCount(remoteServiceTemp);
+            }
         }
     }
 
@@ -2418,7 +2475,7 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
             return;
         }
         mCreateConnectionProcessor = new CreateConnectionProcessor(this, mRepository, this,
-                phoneAccountRegistrar, mContext);
+                phoneAccountRegistrar, mContext, mFlags);
         mCreateConnectionProcessor.process();
     }
 
@@ -2940,7 +2997,10 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
             if (mTransactionalService != null) {
                 mTransactionalService.onSetInactive(this);
             } else if (mConnectionService != null) {
-                awaitCallStateChangeAndMaybeDisconnectCall(CallState.ON_HOLD, isSelfManaged(), "hold");
+                if (mFlags.transactionalCsVerifier()) {
+                    awaitCallStateChangeAndMaybeDisconnectCall(CallState.ON_HOLD, isSelfManaged(),
+                            "hold");
+                }
                 mConnectionService.hold(this);
             } else {
                 Log.e(this, new NullPointerException(),
@@ -3098,6 +3158,12 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
                     Connection.EXTRA_REMOTE_PHONE_ACCOUNT_HANDLE));
         }
 
+        if (mExtras.containsKey(TelecomManager.EXTRA_DO_NOT_LOG_CALL)) {
+            if (source != SOURCE_CONNECTION_SERVICE || !mIsModifyStatePermissionGranted) {
+                mExtras.remove(TelecomManager.EXTRA_DO_NOT_LOG_CALL);
+            }
+        }
+
         // If the change originated from an InCallService, notify the connection service.
         if (source == SOURCE_INCALL_SERVICE) {
             Log.addEvent(this, LogUtils.Events.ICS_EXTRAS_CHANGED);
@@ -3110,6 +3176,15 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
                         "putExtras failed due to null CS callId=%s", getId());
             }
         }
+    }
+
+    private boolean isModifyPhoneStatePermissionGranted(PhoneAccountHandle phoneAccountHandle) {
+        if (phoneAccountHandle == null) {
+            return false;
+        }
+        String packageName = phoneAccountHandle.getComponentName().getPackageName();
+        return PackageManager.PERMISSION_GRANTED == mContext.getPackageManager().checkPermission(
+                android.Manifest.permission.MODIFY_PHONE_STATE, packageName);
     }
 
     /**
@@ -4092,7 +4167,7 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
      * @param associatedUser
      */
     public void setAssociatedUser(UserHandle associatedUser) {
-        Log.i(this, "Setting associated user for call");
+        Log.i(this, "Setting associated user for call: %s", associatedUser);
         Preconditions.checkNotNull(associatedUser);
         mAssociatedUser = associatedUser;
     }

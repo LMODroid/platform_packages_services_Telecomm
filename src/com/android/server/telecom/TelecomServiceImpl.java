@@ -356,9 +356,28 @@ public class TelecomServiceImpl {
 
         @Override
         public ParceledListSlice<PhoneAccountHandle> getCallCapablePhoneAccounts(
-                boolean includeDisabledAccounts, String callingPackage, String callingFeatureId) {
+                boolean includeDisabledAccounts, String callingPackage,
+                String callingFeatureId, boolean acrossProfiles) {
             try {
                 Log.startSession("TSI.gCCPA", Log.getPackageAbbreviation(callingPackage));
+
+                if (mTelephonyFeatureFlags.workProfileApiSplit()) {
+                    if (acrossProfiles) {
+                        enforceInAppCrossProfilePermission();
+                    }
+
+                    if (includeDisabledAccounts && !canReadPrivilegedPhoneState(
+                            callingPackage, "getCallCapablePhoneAccounts")) {
+                        throw new SecurityException(
+                                "Requires READ_PRIVILEGED_PHONE_STATE permission.");
+                    }
+
+                    if (!includeDisabledAccounts && !canReadPhoneState(callingPackage,
+                            callingFeatureId, "Requires READ_PHONE_STATE permission.")) {
+                        throw new SecurityException("Requires READ_PHONE_STATE permission.");
+                    }
+                }
+
                 if (includeDisabledAccounts &&
                         !canReadPrivilegedPhoneState(
                                 callingPackage, "getCallCapablePhoneAccounts")) {
@@ -370,7 +389,11 @@ public class TelecomServiceImpl {
                 }
                 synchronized (mLock) {
                     final UserHandle callingUserHandle = Binder.getCallingUserHandle();
-                    boolean crossUserAccess = hasInAppCrossUserPermission();
+                    boolean crossUserAccess = mTelephonyFeatureFlags.workProfileApiSplit()
+                            && !acrossProfiles ? false
+                            : (mTelephonyFeatureFlags.workProfileApiSplit()
+                                    ? hasInAppCrossProfilePermission()
+                                    : hasInAppCrossUserPermission());
                     long token = Binder.clearCallingIdentity();
                     try {
                         return new ParceledListSlice<>(
@@ -638,6 +661,7 @@ public class TelecomServiceImpl {
         public ParceledListSlice<PhoneAccountHandle> getAllPhoneAccountHandles() {
             try {
                 Log.startSession("TSI.gAPAH");
+
                 try {
                     enforceModifyPermission(
                             "getAllPhoneAccountHandles requires MODIFY_PHONE_STATE permission.");
@@ -656,7 +680,7 @@ public class TelecomServiceImpl {
                                 .getAllPhoneAccountHandles(callingUserHandle,
                                         crossUserAccess));
                     } catch (Exception e) {
-                        Log.e(this, e, "getAllPhoneAccounts");
+                        Log.e(this, e, "getAllPhoneAccountsHandles");
                         throw e;
                     } finally {
                         Binder.restoreCallingIdentity(token);
@@ -2558,6 +2582,8 @@ public class TelecomServiceImpl {
     private TransactionManager mTransactionManager;
     private final TransactionalServiceRepository mTransactionalServiceRepository;
     private final FeatureFlags mFeatureFlags;
+    private final com.android.internal.telephony.flags.FeatureFlags mTelephonyFeatureFlags;
+
 
     public TelecomServiceImpl(
             Context context,
@@ -2569,6 +2595,7 @@ public class TelecomServiceImpl {
             SubscriptionManagerAdapter subscriptionManagerAdapter,
             SettingsSecureAdapter settingsSecureAdapter,
             FeatureFlags featureFlags,
+            com.android.internal.telephony.flags.FeatureFlags telephonyFeatureFlags,
             TelecomSystem.SyncRoot lock) {
         mContext = context;
         mAppOpsManager = (AppOpsManager) mContext.getSystemService(Context.APP_OPS_SERVICE);
@@ -2577,6 +2604,12 @@ public class TelecomServiceImpl {
 
         mCallsManager = callsManager;
         mFeatureFlags = featureFlags;
+        if (telephonyFeatureFlags != null) {
+            mTelephonyFeatureFlags = telephonyFeatureFlags;
+        } else {
+            mTelephonyFeatureFlags =
+                    new com.android.internal.telephony.flags.FeatureFlagsImpl();
+        }
         mLock = lock;
         mPhoneAccountRegistrar = phoneAccountRegistrar;
         mUserCallIntentProcessorFactory = userCallIntentProcessorFactory;
@@ -2947,9 +2980,21 @@ public class TelecomServiceImpl {
                         + " INTERACT_ACROSS_USERS permission");
     }
 
+    private void enforceInAppCrossProfilePermission() {
+        mContext.enforceCallingOrSelfPermission(
+                android.Manifest.permission.INTERACT_ACROSS_PROFILES, "Must be system or have"
+                        + " INTERACT_ACROSS_PROFILES permission");
+    }
+
     private boolean hasInAppCrossUserPermission() {
         return mContext.checkCallingOrSelfPermission(
                 Manifest.permission.INTERACT_ACROSS_USERS)
+                == PackageManager.PERMISSION_GRANTED;
+    }
+
+    private boolean hasInAppCrossProfilePermission() {
+        return mContext.checkCallingOrSelfPermission(
+                Manifest.permission.INTERACT_ACROSS_PROFILES)
                 == PackageManager.PERMISSION_GRANTED;
     }
 

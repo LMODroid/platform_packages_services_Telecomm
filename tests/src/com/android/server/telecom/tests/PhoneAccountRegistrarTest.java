@@ -117,6 +117,7 @@ public class PhoneAccountRegistrarTest extends TelecomTestCase {
     @Mock private TelecomManager mTelecomManager;
     @Mock private DefaultDialerCache mDefaultDialerCache;
     @Mock private AppLabelProxy mAppLabelProxy;
+    @Mock private com.android.internal.telephony.flags.FeatureFlags mTelephonyFeatureFlags;
 
     @Override
     @Before
@@ -134,8 +135,10 @@ public class PhoneAccountRegistrarTest extends TelecomTestCase {
         when(mAppLabelProxy.getAppLabel(anyString()))
                 .thenReturn(TEST_LABEL);
         mRegistrar = new PhoneAccountRegistrar(
-                mComponentContextFixture.getTestDouble().getApplicationContext(),
-                mLock, FILE_NAME, mDefaultDialerCache, mAppLabelProxy);
+                mComponentContextFixture.getTestDouble().getApplicationContext(), mLock, FILE_NAME,
+                mDefaultDialerCache, mAppLabelProxy, mTelephonyFeatureFlags);
+        when(mFeatureFlags.onlyUpdateTelephonyOnValidSubIds()).thenReturn(false);
+        when(mTelephonyFeatureFlags.workProfileApiSplit()).thenReturn(false);
     }
 
     @Override
@@ -1732,6 +1735,56 @@ public class PhoneAccountRegistrarTest extends TelecomTestCase {
         } finally {
             mRegistrar.unregisterPhoneAccount(account.getAccountHandle());
         }
+    }
+
+    @Test
+    public void testGetPhoneAccountAcrossUsers() throws Exception {
+        when(mTelephonyFeatureFlags.workProfileApiSplit()).thenReturn(true);
+        mComponentContextFixture.addConnectionService(makeQuickConnectionServiceComponentName(),
+                Mockito.mock(IConnectionService.class));
+
+        PhoneAccount accountForCurrent = makeQuickAccountBuilder("id_0", 0, UserHandle.CURRENT)
+                .setCapabilities(PhoneAccount.CAPABILITY_CONNECTION_MANAGER
+                        | PhoneAccount.CAPABILITY_CALL_PROVIDER).build();
+        PhoneAccount accountForAll = makeQuickAccountBuilder("id_0", 0, UserHandle.ALL)
+                .setCapabilities(PhoneAccount.CAPABILITY_CONNECTION_MANAGER
+                        | PhoneAccount.CAPABILITY_CALL_PROVIDER
+                        | PhoneAccount.CAPABILITY_MULTI_USER).build();
+        PhoneAccount accountForWorkProfile = makeQuickAccountBuilder("id_1", 1, USER_HANDLE_10)
+                .setCapabilities(PhoneAccount.CAPABILITY_CONNECTION_MANAGER
+                        | PhoneAccount.CAPABILITY_CALL_PROVIDER).build();
+
+        registerAndEnableAccount(accountForCurrent);
+        registerAndEnableAccount(accountForAll);
+        registerAndEnableAccount(accountForWorkProfile);
+
+        List<PhoneAccount> accountsForUser = mRegistrar.getPhoneAccounts(0, 0,
+                null, null, false, USER_HANDLE_10, false, false);
+        List<PhoneAccount> accountsVisibleUser = mRegistrar.getPhoneAccounts(0, 0,
+                null, null, false, USER_HANDLE_10, false, true);
+        List<PhoneAccount> accountsAcrossUser = mRegistrar.getPhoneAccounts(0, 0,
+                null, null, false, USER_HANDLE_10, true, false);
+
+        // Return the account exactly matching the user if it exists
+        assertEquals(1, accountsForUser.size());
+        assertTrue(accountsForUser.contains(accountForWorkProfile));
+        // The accounts visible to the user without across user permission
+        assertEquals(2, accountsVisibleUser.size());
+        assertTrue(accountsVisibleUser.containsAll(accountsForUser));
+        assertTrue(accountsVisibleUser.contains(accountForAll));
+        // The accounts visible to the user with across user permission
+        assertEquals(3, accountsAcrossUser.size());
+        assertTrue(accountsAcrossUser.containsAll(accountsVisibleUser));
+        assertTrue(accountsAcrossUser.contains(accountForCurrent));
+
+        mRegistrar.unregisterPhoneAccount(accountForWorkProfile.getAccountHandle());
+
+        accountsForUser = mRegistrar.getPhoneAccounts(0, 0,
+                null, null, false, USER_HANDLE_10, false, false);
+
+        // Return the account visible for the user if no account exactly matches the user
+        assertEquals(1, accountsForUser.size());
+        assertTrue(accountsForUser.contains(accountForAll));
     }
 
     private static PhoneAccount.Builder makeBuilderWithBindCapabilities(PhoneAccountHandle handle) {
