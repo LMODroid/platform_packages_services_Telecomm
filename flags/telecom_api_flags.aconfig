@@ -27,3 +27,11 @@ flag{
   description: "The key is used for dialer apps to mark missed calls as read when it gets the notification on reboot."
   bug: "292597423"
 }
+
+
+flag{
+  name: "set_mute_state"
+  namespace: "telecom"
+  description: "transactional calls need the ability to mute the call audio input"
+  bug: "310669304"
+}
