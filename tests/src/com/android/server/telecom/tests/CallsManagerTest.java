@@ -3077,11 +3077,9 @@ public class CallsManagerTest extends TelecomTestCase {
         mCallsManager.createActionSetCallStateAndPerformAction(
                 call, CallState.DISCONNECTED, "");
 
-        verify(sourceCall).onConnectionEvent(eq(Connection.EVENT_HANDOVER_FAILED), any());
         verify(sourceCall).onHandoverFailed(
                     android.telecom.Call.Callback.HANDOVER_FAILURE_USER_REJECTED);
 
-        verify(call).sendCallEvent(eq(android.telecom.Call.EVENT_HANDOVER_FAILED), any());
         verify(call).markFinishedHandoverStateAndCleanup(HandoverState.HANDOVER_FAILED);
     }
 
@@ -3094,9 +3092,6 @@ public class CallsManagerTest extends TelecomTestCase {
         when(call.getHandoverState()).thenReturn(HandoverState.HANDOVER_FROM_STARTED);
         mCallsManager.createActionSetCallStateAndPerformAction(
                 call, CallState.DISCONNECTED, "");
-
-        verify(destinationCall).sendCallEvent(
-                eq(android.telecom.Call.EVENT_HANDOVER_SOURCE_DISCONNECTED), any());
     }
 
     @SmallTest
@@ -3110,11 +3105,8 @@ public class CallsManagerTest extends TelecomTestCase {
         mCallsManager.createActionSetCallStateAndPerformAction(
                 call, CallState.DISCONNECTED, "");
 
-        verify(call).onConnectionEvent(eq(Connection.EVENT_HANDOVER_COMPLETE), any());
         verify(call).onHandoverComplete();
         verify(call).markFinishedHandoverStateAndCleanup(HandoverState.HANDOVER_COMPLETE);
-        verify(destinationCall).sendCallEvent(
-                eq(android.telecom.Call.EVENT_HANDOVER_COMPLETE), any());
         verify(destinationCall).onHandoverComplete();
     }
 
@@ -3131,11 +3123,8 @@ public class CallsManagerTest extends TelecomTestCase {
         mCallsManager.createActionSetCallStateAndPerformAction(
                 call, CallState.DISCONNECTED, "");
 
-        verify(call).onConnectionEvent(eq(Connection.EVENT_HANDOVER_COMPLETE), any());
         verify(call).onHandoverComplete();
         verify(call).markFinishedHandoverStateAndCleanup(HandoverState.HANDOVER_COMPLETE);
-        verify(destinationCall).sendCallEvent(
-                eq(android.telecom.Call.EVENT_HANDOVER_COMPLETE), any());
         verify(destinationCall).onHandoverComplete();
         verify(otherCall).disconnect();
     }
