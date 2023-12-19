@@ -406,6 +406,13 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
     private int mCallerDisplayNamePresentation;
 
     /**
+     * The remote connection service which is attempted or already connecting this call. This is set
+     * to a non-null value only when a connection manager phone account is in use. When set, this
+     * will correspond to the target phone account of the {@link Call}.
+     */
+    private ConnectionServiceWrapper mRemoteConnectionService;
+
+    /**
      * The connection service which is attempted or already connecting this call.
      */
     private ConnectionServiceWrapper mConnectionService;
@@ -2313,11 +2320,25 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
 
     @VisibleForTesting
     public void setConnectionService(ConnectionServiceWrapper service) {
+        setConnectionService(service, null);
+    }
+
+    @VisibleForTesting
+    public void setConnectionService(
+            ConnectionServiceWrapper service,
+            ConnectionServiceWrapper remoteService
+    ) {
         Preconditions.checkNotNull(service);
 
         clearConnectionService();
 
         service.incrementAssociatedCallCount();
+
+        if (remoteService != null) {
+            remoteService.incrementAssociatedCallCount();
+            mRemoteConnectionService = remoteService;
+        }
+
         mConnectionService = service;
         mAnalytics.setCallConnectionService(service.getComponentName().flattenToShortString());
         mConnectionService.addCall(this);
@@ -2325,10 +2346,12 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
 
     /**
      * Perform an in-place replacement of the {@link ConnectionServiceWrapper} for this Call.
-     * Removes the call from its former {@link ConnectionServiceWrapper}, ensuring that the
-     * ConnectionService is NOT unbound if the call count hits zero.
-     * This is used by the {@link ConnectionServiceWrapper} when handling {@link Connection} and
-     * {@link Conference} additions via a ConnectionManager.
+     * Removes the call from its former {@link ConnectionServiceWrapper}, while still ensuring the
+     * former {@link ConnectionServiceWrapper} is tracked as the mRemoteConnectionService for this
+     * call so that the associatedCallCount of that {@link ConnectionServiceWrapper} is accurately
+     * tracked until it is supposed to be unbound.
+     * This method is used by the {@link ConnectionServiceWrapper} when handling {@link Connection}
+     * and {@link Conference} additions via a ConnectionManager.
      * The original {@link android.telecom.ConnectionService} will directly add external calls and
      * conferences to Telecom as well as the ConnectionManager, which will add to Telecom.  In these
      * cases since its first added to via the original CS, we want to change the CS responsible for
@@ -2341,9 +2364,12 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
 
         if (mConnectionService != null) {
             ConnectionServiceWrapper serviceTemp = mConnectionService;
+
+            // Continue to track the former CS for this call so that it doesn't unbind early:
+            mRemoteConnectionService = serviceTemp;
+
             mConnectionService = null;
             serviceTemp.removeCall(this);
-            serviceTemp.decrementAssociatedCallCount(true /*isSuppressingUnbind*/);
         }
 
         service.incrementAssociatedCallCount();
@@ -2357,6 +2383,8 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
     void clearConnectionService() {
         if (mConnectionService != null) {
             ConnectionServiceWrapper serviceTemp = mConnectionService;
+            ConnectionServiceWrapper remoteServiceTemp = mRemoteConnectionService;
+            mRemoteConnectionService = null;
             mConnectionService = null;
             serviceTemp.removeCall(this);
 
@@ -2367,6 +2395,10 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
             // necessary, but cleaning up mConnectionService prior to triggering an unbind is good
             // to do.
             decrementAssociatedCallCount(serviceTemp);
+
+            if (remoteServiceTemp != null) {
+                decrementAssociatedCallCount(remoteServiceTemp);
+            }
         }
     }
 

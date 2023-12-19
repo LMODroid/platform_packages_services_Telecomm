@@ -205,7 +205,12 @@ public class CreateConnectionProcessorTest extends TelecomTestCase {
         // Include a Connection Manager
         PhoneAccountHandle callManagerPAHandle = getNewConnectionMangerHandleForCall(mMockCall,
                 "cm_acct");
-        ConnectionServiceWrapper service = makeConnectionServiceWrapper();
+
+        // Need a separate CSW for the connection mgr and the target phone acct.
+        ConnectionServiceWrapper targetCsw = configureConnectionServiceWrapper(pAHandle);
+        ConnectionServiceWrapper connectionMgrCsw = configureConnectionServiceWrapper(
+                callManagerPAHandle);
+
         // Make sure the target phone account has the correct permissions
         PhoneAccount mFakeTargetPhoneAccount = makeQuickAccount("cm_acct",
                 PhoneAccount.CAPABILITY_SIM_SUBSCRIPTION, null);
@@ -216,8 +221,13 @@ public class CreateConnectionProcessorTest extends TelecomTestCase {
 
         verify(mMockCall).setConnectionManagerPhoneAccount(eq(callManagerPAHandle));
         verify(mMockCall).setTargetPhoneAccount(eq(pAHandle));
-        verify(mMockCall).setConnectionService(eq(service));
-        verify(service).createConnection(eq(mMockCall),
+        // TODO: This test requires refactoring; it should be targetCsw for the remote CS.
+        // However, this test uses phone accounts from all the same component meaning that there
+        // is no distinction between the target and connection mgr service.  Ideally they should use
+        // different packages.
+        verify(mMockCall).setConnectionService(eq(connectionMgrCsw) /* primary cs */,
+                eq(connectionMgrCsw) /* remote CS */);
+        verify(connectionMgrCsw).createConnection(eq(mMockCall),
                 any(CreateConnectionResponse.class));
         // Notify successful connection to call
         CallIdMapper mockCallIdMapper = mock(CallIdMapper.class);
@@ -667,13 +677,22 @@ public class CreateConnectionProcessorTest extends TelecomTestCase {
         // Include a connection Manager for the user with the capability to make calls
         PhoneAccount emerCallManagerPA = getNewEmergencyConnectionManagerPhoneAccount("cm_acct",
                 PhoneAccount.CAPABILITY_PLACE_EMERGENCY_CALLS);
-        ConnectionServiceWrapper service = makeConnectionServiceWrapper();
+
+        ConnectionServiceWrapper targetCsw =
+                configureConnectionServiceWrapper(regularAccount.getAccountHandle());
+        ConnectionServiceWrapper connectionMgrCsw =
+                configureConnectionServiceWrapper(callManagerPA.getAccountHandle());
+        ConnectionServiceWrapper emergencyConnectionMgrCsw =
+                configureConnectionServiceWrapper(emerCallManagerPA.getAccountHandle());
+
         PhoneAccount emergencyPhoneAccount = makeEmergencyPhoneAccount("tel_emer", 0, null);
         phoneAccounts.add(emergencyPhoneAccount);
         mapToSubSlot(regularAccount, 2 /*subId*/, 1 /*slotId*/);
         mTestCreateConnectionProcessor.process();
         reset(mMockCall);
-        reset(service);
+        reset(targetCsw);
+        reset(connectionMgrCsw);
+        reset(emergencyConnectionMgrCsw);
 
         when(mMockCall.getConnectionServiceFocusManager()).thenReturn(
                 mConnectionServiceFocusManager);
@@ -686,8 +705,11 @@ public class CreateConnectionProcessorTest extends TelecomTestCase {
         verify(mMockCall).setConnectionManagerPhoneAccount(
                 eq(emerCallManagerPA.getAccountHandle()));
         verify(mMockCall).setTargetPhoneAccount(eq(regularAccount.getAccountHandle()));
-        verify(mMockCall).setConnectionService(eq(service));
-        verify(service).createConnection(eq(mMockCall), any(CreateConnectionResponse.class));
+        // Fallback was to the emergency connection mgr, so that CSW should have been set.
+        verify(mMockCall).setConnectionService(eq(emergencyConnectionMgrCsw) /* primary */,
+                eq(emergencyConnectionMgrCsw) /* remote (ie original target) */);
+        verify(emergencyConnectionMgrCsw).createConnection(eq(mMockCall),
+                any(CreateConnectionResponse.class));
     }
 
     /**
@@ -868,5 +890,18 @@ public class CreateConnectionProcessorTest extends TelecomTestCase {
                 .setShortDescription("desc" + idx)
                 .setIsEnabled(true)
                 .build();
+   }
+
+    /**
+     * Configures a mock ConnectionServiceWrapper for the passed in phone account handle.
+     * @param account The phone account handle to use.
+     * @return The configured mock.
+     */
+    private ConnectionServiceWrapper configureConnectionServiceWrapper(PhoneAccountHandle account) {
+        ConnectionServiceWrapper wrapper = mock(ConnectionServiceWrapper.class);
+        when(mMockConnectionServiceRepository.getService(
+                eq(account.getComponentName()),
+                any(UserHandle.class))).thenReturn(wrapper);
+        return wrapper;
     }
 }
