@@ -3427,62 +3427,16 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
      */
     public void sendCallEvent(String event, int targetSdkVer, Bundle extras) {
         if (mConnectionService != null || mTransactionalService != null) {
-            if (android.telecom.Call.EVENT_REQUEST_HANDOVER.equals(event)) {
-                if (targetSdkVer > Build.VERSION_CODES.P) {
-                    Log.e(this, new Exception(), "sendCallEvent failed. Use public api handoverTo" +
-                            " for API > 28(P)");
-                    // Event-based Handover APIs are deprecated, so inform the user.
-                    mHandler.post(new Runnable() {
-                        @Override
-                        public void run() {
-                            mToastFactory.makeText(mContext,
-                                    "WARNING: Event-based handover APIs are deprecated and will no"
-                                            + " longer function in Android Q.",
-                                    Toast.LENGTH_LONG).show();
-                        }
-                    });
-
-                    // Uncomment and remove toast at feature complete: return;
-                }
-
-                // Handover requests are targeted at Telecom, not the ConnectionService.
-                if (extras == null) {
-                    Log.w(this, "sendCallEvent: %s event received with null extras.",
-                            android.telecom.Call.EVENT_REQUEST_HANDOVER);
-                    sendEventToService(this, android.telecom.Call.EVENT_HANDOVER_FAILED,
-                            null);
-                    return;
-                }
-                Parcelable parcelable = extras.getParcelable(
-                        android.telecom.Call.EXTRA_HANDOVER_PHONE_ACCOUNT_HANDLE);
-                if (!(parcelable instanceof PhoneAccountHandle) || parcelable == null) {
-                    Log.w(this, "sendCallEvent: %s event received with invalid handover acct.",
-                            android.telecom.Call.EVENT_REQUEST_HANDOVER);
-                    sendEventToService(this, android.telecom.Call.EVENT_HANDOVER_FAILED, null);
-                    return;
-                }
-                PhoneAccountHandle phoneAccountHandle = (PhoneAccountHandle) parcelable;
-                int videoState = extras.getInt(android.telecom.Call.EXTRA_HANDOVER_VIDEO_STATE,
-                        VideoProfile.STATE_AUDIO_ONLY);
-                Parcelable handoverExtras = extras.getParcelable(
-                        android.telecom.Call.EXTRA_HANDOVER_EXTRAS);
-                Bundle handoverExtrasBundle = null;
-                if (handoverExtras instanceof Bundle) {
-                    handoverExtrasBundle = (Bundle) handoverExtras;
-                }
-                requestHandover(phoneAccountHandle, videoState, handoverExtrasBundle, true);
-            } else {
-                // Relay bluetooth call quality reports to the call diagnostic service.
-                if (BluetoothCallQualityReport.EVENT_BLUETOOTH_CALL_QUALITY_REPORT.equals(event)
-                        && extras.containsKey(
-                        BluetoothCallQualityReport.EXTRA_BLUETOOTH_CALL_QUALITY_REPORT)) {
-                    notifyBluetoothCallQualityReport(extras.getParcelable(
-                            BluetoothCallQualityReport.EXTRA_BLUETOOTH_CALL_QUALITY_REPORT
-                    ));
-                }
-                Log.addEvent(this, LogUtils.Events.CALL_EVENT, event);
-                sendEventToService(this, event, extras);
+            // Relay bluetooth call quality reports to the call diagnostic service.
+            if (BluetoothCallQualityReport.EVENT_BLUETOOTH_CALL_QUALITY_REPORT.equals(event)
+                    && extras.containsKey(
+                    BluetoothCallQualityReport.EXTRA_BLUETOOTH_CALL_QUALITY_REPORT)) {
+                notifyBluetoothCallQualityReport(extras.getParcelable(
+                        BluetoothCallQualityReport.EXTRA_BLUETOOTH_CALL_QUALITY_REPORT
+                ));
             }
+            Log.addEvent(this, LogUtils.Events.CALL_EVENT, event);
+            sendEventToService(this, event, extras);
         } else {
             Log.e(this, new NullPointerException(),
                     "sendCallEvent failed due to null CS callId=%s", getId());
