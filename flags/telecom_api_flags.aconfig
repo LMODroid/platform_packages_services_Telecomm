@@ -30,6 +30,13 @@ flag{
 }
 
 flag{
+  name: "get_registered_phone_accounts"
+  namespace: "telecom"
+  description: "When set, self-managed clients can get their own phone accounts"
+  bug: "317132586"
+}
+
+flag{
   name: "transactional_video_state"
   namespace: "telecom"
   description: "when set, clients using transactional implementations will be able to set & get the video state"
