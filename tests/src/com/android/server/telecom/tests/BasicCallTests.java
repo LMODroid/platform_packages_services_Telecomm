@@ -16,6 +16,8 @@
 
 package com.android.server.telecom.tests;
 
+import static com.android.server.telecom.callfiltering.BlockCheckerFilter.RES_BLOCK_STATUS;
+import static com.android.server.telecom.callfiltering.BlockCheckerFilter.STATUS_BLOCKED_IN_LIST;
 import static com.android.server.telecom.tests.ConnectionServiceFixture.STATUS_HINTS_EXTRA;
 
 import static org.junit.Assert.assertEquals;
@@ -887,8 +889,7 @@ public class BasicCallTests extends TelecomSystemTest {
             @Override
             public Bundle answer(InvocationOnMock invocation) throws Throwable {
                 Bundle bundle = new Bundle();
-                bundle.putInt(BlockedNumberContract.RES_BLOCK_STATUS,
-                        BlockedNumberContract.STATUS_BLOCKED_IN_LIST);
+                bundle.putInt(RES_BLOCK_STATUS, STATUS_BLOCKED_IN_LIST);
                 return bundle;
             }
         });
