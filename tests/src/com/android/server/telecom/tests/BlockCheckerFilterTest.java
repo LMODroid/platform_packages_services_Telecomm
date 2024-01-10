@@ -32,11 +32,10 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.PersistableBundle;
 import android.provider.CallLog;
-import android.telecom.CallerInfo;
 import android.telecom.TelecomManager;
 import android.telephony.CarrierConfigManager;
-import android.test.suitebuilder.annotation.SmallTest;
-import android.util.Pair;
+
+import androidx.test.filters.SmallTest;
 
 import com.android.server.telecom.Call;
 import com.android.server.telecom.CallerInfoLookupHelper;
@@ -51,7 +50,6 @@ import org.junit.runners.JUnit4;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeUnit;
 
