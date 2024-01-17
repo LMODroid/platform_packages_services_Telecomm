@@ -3500,7 +3500,7 @@ public class CallsManager extends Call.ListenerBase
     }
 
     /** Called by the in-call UI to change the mute state. */
-    void mute(boolean shouldMute) {
+    public void mute(boolean shouldMute) {
         if (isInEmergencyCall() && shouldMute) {
             Log.i(this, "Refusing to turn on mute because we're in an emergency call");
             shouldMute = false;
