@@ -73,6 +73,7 @@ import android.os.PersistableBundle;
 import android.os.Process;
 import android.os.ResultReceiver;
 import android.os.SystemClock;
+import android.os.SystemProperties;
 import android.os.SystemVibrator;
 import android.os.Trace;
 import android.os.UserHandle;
@@ -3131,9 +3132,8 @@ public class CallsManager extends Call.ListenerBase
      * @return {@code true} if the speakerphone should automatically be enabled.
      */
     private static boolean isSpeakerEnabledForVideoCalls() {
-        return TelephonyProperties.videocall_audio_output()
-                .orElse(TelecomManager.AUDIO_OUTPUT_DEFAULT)
-                == TelecomManager.AUDIO_OUTPUT_ENABLE_SPEAKER;
+        return SystemProperties.getInt(TelecomManager.PROPERTY_VIDEOCALL_AUDIO_OUTPUT,
+                TelecomManager.AUDIO_OUTPUT_DEFAULT) == TelecomManager.AUDIO_OUTPUT_ENABLE_SPEAKER;
     }
 
     /**
