@@ -225,6 +225,29 @@ public class CallsManager extends Call.ListenerBase
         void performAction();
     }
 
+    /**
+     * @hide
+     */
+    public interface Response<IN, OUT> {
+
+        /**
+         * Provide a set of results.
+         *
+         * @param request The original request.
+         * @param result The results.
+         */
+        void onResult(IN request, OUT... result);
+
+        /**
+         * Indicates the inability to provide results.
+         *
+         * @param request The original request.
+         * @param code An integer code indicating the reason for failure.
+         * @param msg A message explaining the reason for failure.
+         */
+        void onError(IN request, int code, String msg);
+    }
+
     private static final String TAG = "CallsManager";
 
     /**

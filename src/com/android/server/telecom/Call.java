@@ -58,7 +58,6 @@ import android.telecom.ParcelableConference;
 import android.telecom.ParcelableConnection;
 import android.telecom.PhoneAccount;
 import android.telecom.PhoneAccountHandle;
-import android.telecom.Response;
 import android.telecom.StatusHints;
 import android.telecom.TelecomManager;
 import android.telecom.VideoProfile;
@@ -3778,7 +3777,7 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
             Log.d(this, "maybeLoadCannedSmsResponses: starting task to load messages");
             mCannedSmsResponsesLoadingStarted = true;
             mCallsManager.getRespondViaSmsManager().loadCannedTextMessages(
-                    new Response<Void, List<String>>() {
+                    new CallsManager.Response<Void, List<String>>() {
                         @Override
                         public void onResult(Void request, List<String>... result) {
                             if (result.length > 0) {
