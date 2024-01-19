@@ -2977,10 +2977,6 @@ public class CallsManager extends Call.ListenerBase
                 Log.d(this, "answerCall: Incoming call = %s Ongoing call %s", call, activeCall);
             }
             // Hold or disconnect the active call and request call focus for the incoming call.
-            Bundle bundle = new Bundle();
-            bundle.putLong(TelecomManager.EXTRA_CALL_ANSWERED_TIME_MILLIS,
-                     mClockProxy.currentTimeMillis());
-            call.putConnectionServiceExtras(bundle);
             holdActiveCallForNewCall(call);
             mConnectionSvrFocusMgr.requestFocus(
                     call,
