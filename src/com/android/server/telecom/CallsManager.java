@@ -225,6 +225,29 @@ public class CallsManager extends Call.ListenerBase
         void performAction();
     }
 
+    /**
+     * @hide
+     */
+    public interface Response<IN, OUT> {
+
+        /**
+         * Provide a set of results.
+         *
+         * @param request The original request.
+         * @param result The results.
+         */
+        void onResult(IN request, OUT... result);
+
+        /**
+         * Indicates the inability to provide results.
+         *
+         * @param request The original request.
+         * @param code An integer code indicating the reason for failure.
+         * @param msg A message explaining the reason for failure.
+         */
+        void onError(IN request, int code, String msg);
+    }
+
     private static final String TAG = "CallsManager";
 
     /**
@@ -2977,10 +3000,6 @@ public class CallsManager extends Call.ListenerBase
                 Log.d(this, "answerCall: Incoming call = %s Ongoing call %s", call, activeCall);
             }
             // Hold or disconnect the active call and request call focus for the incoming call.
-            Bundle bundle = new Bundle();
-            bundle.putLong(TelecomManager.EXTRA_CALL_ANSWERED_TIME_MILLIS,
-                     mClockProxy.currentTimeMillis());
-            call.putConnectionServiceExtras(bundle);
             holdActiveCallForNewCall(call);
             mConnectionSvrFocusMgr.requestFocus(
                     call,
