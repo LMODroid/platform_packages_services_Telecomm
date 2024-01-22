@@ -77,6 +77,7 @@ import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telecom.ICallControl;
 import com.android.internal.telecom.ICallEventCallback;
 import com.android.internal.telecom.ITelecomService;
+import com.android.internal.telephony.flags.Flags;
 import com.android.internal.util.IndentingPrintWriter;
 import com.android.server.telecom.components.UserCallIntentProcessorFactory;
 import com.android.server.telecom.flags.FeatureFlags;
@@ -806,6 +807,13 @@ public class TelecomServiceImpl {
 
                         // Validate the profile boundary of the given image URI.
                         validateAccountIconUserBoundary(account.getIcon());
+
+                        if (mTelephonyFeatureFlags.simultaneousCallingIndications()
+                                && account.hasSimultaneousCallingRestriction()) {
+                            validateSimultaneousCallingPackageNames(
+                                    account.getAccountHandle().getComponentName().getPackageName(),
+                                    account.getSimultaneousCallingRestriction());
+                        }
 
                         final long token = Binder.clearCallingIdentity();
                         try {
@@ -3289,6 +3297,22 @@ public class TelecomServiceImpl {
                     throw new IllegalArgumentException("Attempting to register a phone account with"
                             + " an image icon belonging to another user.");
                 }
+            }
+        }
+    }
+
+    private void validateSimultaneousCallingPackageNames(String appPackageName,
+            Set<PhoneAccountHandle> handles) {
+        for (PhoneAccountHandle handle : handles) {
+            ComponentName name = handle.getComponentName();
+            if (name == null) {
+                throw new IllegalArgumentException("ComponentName is null");
+            }
+            String restrictionPackageName = name.getPackageName();
+            if (!appPackageName.equals(restrictionPackageName)) {
+                throw new SecurityException("The package name of the PhoneAccount does not "
+                        + "match one or more of the package names set in the simultaneous "
+                        + "calling restriction.");
             }
         }
     }
