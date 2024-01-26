@@ -85,6 +85,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
@@ -951,6 +952,9 @@ public class PhoneAccountRegistrar {
         enforceCharacterLimit(account);
         enforceIconSizeLimit(account);
         enforceMaxPhoneAccountLimit(account);
+        if (mTelephonyFeatureFlags.simultaneousCallingIndications()) {
+            enforceSimultaneousCallingRestrictionLimit(account);
+        }
         addOrReplacePhoneAccount(account);
     }
 
@@ -1074,6 +1078,43 @@ public class PhoneAccountRegistrar {
                             + "PhoneAccountHandle String and Char-Sequence fields are limited to "
                             + MAX_PHONE_ACCOUNT_FIELD_CHAR_LIMIT + " characters.");
                 }
+            }
+        }
+    }
+
+    /**
+     * Enforce size limits on the simultaneous calling restriction of a PhoneAccount.
+     * If a PhoneAccount has a simultaneous calling restriction on it, enforce the following: the
+     * number of PhoneAccountHandles in the Set can not exceed the per app restriction on
+     * PhoneAccounts registered and each PhoneAccountHandle's fields must not exceed the per field
+     * character limit.
+     * @param account The PhoneAccount to enforce simultaneous calling restrictions on.
+     * @throws IllegalArgumentException if the PhoneAccount exceeds size limits.
+     */
+    public void enforceSimultaneousCallingRestrictionLimit(@NonNull PhoneAccount account) {
+        if (!account.hasSimultaneousCallingRestriction()) return;
+        Set<PhoneAccountHandle> restrictions = account.getSimultaneousCallingRestriction();
+        if (restrictions.size() > MAX_PHONE_ACCOUNT_REGISTRATIONS) {
+            throw new IllegalArgumentException("Can not register a PhoneAccount with a number"
+                    + "of simultaneous calling restrictions that is greater than "
+                    + MAX_PHONE_ACCOUNT_REGISTRATIONS);
+        }
+        for (PhoneAccountHandle handle : restrictions) {
+            ComponentName component = handle.getComponentName();
+            if (component.getPackageName().length() > MAX_PHONE_ACCOUNT_FIELD_CHAR_LIMIT) {
+                throw new IllegalArgumentException("A PhoneAccountHandle added as part of "
+                        + "a simultaneous calling restriction has a package name that has exceeded "
+                        + "the character limit of " + MAX_PHONE_ACCOUNT_FIELD_CHAR_LIMIT);
+            }
+            if (component.getClassName().length() > MAX_PHONE_ACCOUNT_FIELD_CHAR_LIMIT) {
+                throw new IllegalArgumentException("A PhoneAccountHandle added as part of "
+                        + "a simultaneous calling restriction has a class name that has exceeded "
+                        + "the character limit of " + MAX_PHONE_ACCOUNT_FIELD_CHAR_LIMIT);
+            }
+            if (handle.getId().length() > MAX_PHONE_ACCOUNT_FIELD_CHAR_LIMIT) {
+                throw new IllegalArgumentException("A PhoneAccountHandle added as part of "
+                        + "a simultaneous calling restriction has an ID that has exceeded "
+                        + "the character limit of " + MAX_PHONE_ACCOUNT_FIELD_CHAR_LIMIT);
             }
         }
     }
