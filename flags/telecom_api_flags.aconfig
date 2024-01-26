@@ -14,13 +14,6 @@ flag {
   bug: "301713560"
 }
 
-flag {
-  name: "unbind_timeout_connections"
-  namespace: "telecom"
-  description: "When set, Telecom will auto-unbind if a ConnectionService returns no connections after some time."
-  bug: "293458004"
-}
-
 flag{
   name: "add_call_uri_for_missed_calls"
   namespace: "telecom"
