@@ -2492,19 +2492,18 @@ public class TelecomServiceImpl {
          */
         @Override
         public boolean isInSelfManagedCall(String packageName, UserHandle userHandle,
-                String callingPackage) {
+                String callingPackage, boolean hasCrossUserAccess) {
             try {
-                if (Binder.getCallingUid() != Process.SYSTEM_UID) {
-                    throw new SecurityException("Only the system can call this API");
-                }
                 mContext.enforceCallingOrSelfPermission(READ_PRIVILEGED_PHONE_STATE,
                         "READ_PRIVILEGED_PHONE_STATE required.");
+                enforceInAppCrossUserPermission();
 
                 Log.startSession("TSI.iISMC", Log.getPackageAbbreviation(callingPackage));
                 synchronized (mLock) {
                     long token = Binder.clearCallingIdentity();
                     try {
-                        return mCallsManager.isInSelfManagedCall(packageName, userHandle);
+                        return mCallsManager.isInSelfManagedCallCrossUsers(
+                                packageName, userHandle, hasCrossUserAccess);
                     } finally {
                         Binder.restoreCallingIdentity(token);
                     }
