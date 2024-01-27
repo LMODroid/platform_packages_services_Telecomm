@@ -156,25 +156,26 @@ public class EmergencyCallDiagnosticLogger extends CallsManagerListenerBase
         List<Integer> dataCollectionTypes = getDataCollectionTypes(reason);
         boolean invokeTelephonyPersistApi = false;
         CallEventTimestamps ts = mEmergencyCallsMap.get(call);
-        EmergencyCallDiagnosticParams dp =
-                new EmergencyCallDiagnosticParams();
+        EmergencyCallDiagnosticParams.Builder callDiagnosticBuilder =
+                new EmergencyCallDiagnosticParams.Builder();
         for (Integer dataCollectionType : dataCollectionTypes) {
             switch (dataCollectionType) {
                 case COLLECTION_TYPE_TELECOM_STATE:
                     if (isTelecomDumpCollectionEnabled()) {
-                        dp.setTelecomDumpSysCollection(true);
+                        callDiagnosticBuilder.setTelecomDumpSysCollectionEnabled(true);
                         invokeTelephonyPersistApi = true;
                     }
                     break;
                 case COLLECTION_TYPE_TELEPHONY_STATE:
                     if (isTelephonyDumpCollectionEnabled()) {
-                        dp.setTelephonyDumpSysCollection(true);
+                        callDiagnosticBuilder.setTelephonyDumpSysCollectionEnabled(true);
                         invokeTelephonyPersistApi = true;
                     }
                     break;
                 case COLLECTION_TYPE_LOGCAT_BUFFERS:
                     if (isLogcatCollectionEnabled()) {
-                        dp.setLogcatCollection(true, ts.getCallCreatedTime());
+                        callDiagnosticBuilder.setLogcatCollectionStartTimeMillis(
+                                ts.getCallCreatedTime());
                         invokeTelephonyPersistApi = true;
                     }
                     break;
@@ -191,6 +192,7 @@ public class EmergencyCallDiagnosticLogger extends CallsManagerListenerBase
                 default:
             }
         }
+        EmergencyCallDiagnosticParams dp = callDiagnosticBuilder.build();
         if (invokeTelephonyPersistApi) {
             mAsyncTaskExecutor.execute(new Runnable() {
                 @Override
