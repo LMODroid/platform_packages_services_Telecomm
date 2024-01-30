@@ -886,11 +886,11 @@ public class CallsManager extends Call.ListenerBase
     }
 
     private IncomingCallFilterGraph setUpCallFilterGraph(Call incomingCall) {
+        TelecomManager telecomManager = mContext.getSystemService(TelecomManager.class);
         incomingCall.setIsUsingCallFiltering(true);
         String carrierPackageName = getCarrierPackageName();
         UserHandle userHandle = incomingCall.getAssociatedUser();
-        String defaultDialerPackageName = TelecomManager.from(mContext).
-                getDefaultDialerPackage(userHandle);
+        String defaultDialerPackageName = telecomManager.getDefaultDialerPackage(userHandle);
         String userChosenPackageName = getRoleManagerAdapter().
                 getDefaultCallScreeningApp(userHandle);
         AppLabelProxy appLabelProxy = packageName -> AppLabelProxy.Util.getAppLabel(
