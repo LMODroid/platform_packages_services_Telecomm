@@ -206,6 +206,7 @@ public class InCallControllerTests extends TelecomTestCase {
     private UserHandle mChildUserHandle = UserHandle.of(10);
     private @Mock Call mMockChildUserCall;
     private UserHandle mParentUserHandle = UserHandle.of(1);
+    private @Mock com.android.internal.telephony.flags.FeatureFlags mTelephonyFeatureFlags;
 
     @Override
     @Before
@@ -235,9 +236,11 @@ public class InCallControllerTests extends TelecomTestCase {
                 mMockPermissionInfo);
         when(mMockContext.getAttributionSource()).thenReturn(new AttributionSource(Process.myUid(),
                 "com.android.server.telecom.tests", null));
+        when(mTelephonyFeatureFlags.workProfileApiSplit()).thenReturn(false);
         mInCallController = new InCallController(mMockContext, mLock, mMockCallsManager,
                 mMockSystemStateHelper, mDefaultDialerCache, mTimeoutsAdapter,
-                mEmergencyCallHelper, mCarModeTracker, mClockProxy, mFeatureFlags);
+                mEmergencyCallHelper, mCarModeTracker, mClockProxy, mFeatureFlags,
+                mTelephonyFeatureFlags);
         // Capture the broadcast receiver registered.
         doAnswer(invocation -> {
             mRegisteredReceiver = invocation.getArgument(0);
@@ -1904,7 +1907,7 @@ public class InCallControllerTests extends TelecomTestCase {
         when(call.getId()).thenReturn("TC@" + id);
     }
 
-    private void setupMocksForWorkProfileTest() {
+    private void setupMocksForProfileTest() {
         when(mMockContext.getPackageManager()).thenReturn(mMockPackageManager);
         when(mMockCallsManager.isInEmergencyCall()).thenReturn(false);
         when(mMockChildUserCall.isIncoming()).thenReturn(false);
@@ -1920,9 +1923,9 @@ public class InCallControllerTests extends TelecomTestCase {
         when(mMockUserInfo.getUserHandle()).thenReturn(mParentUserHandle);
         when(mMockChildUserInfo.getUserHandle()).thenReturn(mChildUserHandle);
         when(mMockUserInfo.isManagedProfile()).thenReturn(false);
-        when(mMockChildUserInfo.isManagedProfile()).thenReturn(true);
+        when(mMockChildUserInfo.isManagedProfile()).thenReturn(false);
         when(mMockChildUserCall.getAssociatedUser()).thenReturn(mChildUserHandle);
-        when(mMockCallsManager.getCurrentUserHandle()).thenReturn(mChildUserHandle);
+        when(mMockCallsManager.getCurrentUserHandle()).thenReturn(mParentUserHandle);
         when(mMockUserManager.getProfileParent(mChildUserHandle.getIdentifier())).thenReturn(
                 mMockUserInfo);
         when(mMockUserManager.getProfileParent(mChildUserHandle)).thenReturn(mParentUserHandle);
@@ -1930,14 +1933,14 @@ public class InCallControllerTests extends TelecomTestCase {
                 mMockUserInfo);
         when(mMockUserManager.getUserInfo(eq(mChildUserHandle.getIdentifier()))).thenReturn(
                 mMockChildUserInfo);
-        when(mMockUserManager.isManagedProfile(mChildUserHandle.getIdentifier())).thenReturn(true);
         when(mMockUserManager.isManagedProfile(mParentUserHandle.getIdentifier())).thenReturn(
                 false);
+        when(mTelephonyFeatureFlags.workProfileApiSplit()).thenReturn(true);
     }
 
     @Test
-    public void testManagedProfileCallQueriesIcsUsingParentUserToo() throws Exception {
-        setupMocksForWorkProfileTest();
+    public void testProfileCallQueriesIcsUsingParentUserToo() throws Exception {
+        setupMocksForProfileTest();
         setupMockPackageManager(true /* default */, true /* system */, false /* external calls */);
         setupMockPackageManager(true /* default */,
                 true /*useNonUiInCalls*/, true /*useAppOpNonUiInCalls*/,
@@ -1946,7 +1949,7 @@ public class InCallControllerTests extends TelecomTestCase {
                 true /*includeSelfManagedCallsInCarModeDialer*/,
                 true /*includeSelfManagedCallsInNonUi*/);
 
-        //pass in call by child/work-profileuser
+        //pass in call by child/profile user
         mInCallController.bindToServices(mMockChildUserCall);
 
         // Verify that queryIntentServicesAsUser is also called with parent handle

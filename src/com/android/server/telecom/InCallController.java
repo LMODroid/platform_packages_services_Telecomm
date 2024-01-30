@@ -103,6 +103,8 @@ public class InCallController extends CallsManagerListenerBase implements
     public static final String SET_IN_CALL_ADAPTER_ERROR_MSG =
             "Exception thrown while setting the in-call adapter.";
 
+    private final com.android.internal.telephony.flags.FeatureFlags mTelephonyFeatureFlags;
+
     @VisibleForTesting
     public void setAnomalyReporterAdapter(AnomalyReporterAdapter mAnomalyReporterAdapter){
         mAnomalyReporter = mAnomalyReporterAdapter;
@@ -1246,6 +1248,16 @@ public class InCallController extends CallsManagerListenerBase implements
             SystemStateHelper systemStateHelper, DefaultDialerCache defaultDialerCache,
             Timeouts.Adapter timeoutsAdapter, EmergencyCallHelper emergencyCallHelper,
             CarModeTracker carModeTracker, ClockProxy clockProxy, FeatureFlags featureFlags) {
+      this(context, lock, callsManager, systemStateHelper, defaultDialerCache, timeoutsAdapter,
+              emergencyCallHelper, carModeTracker, clockProxy, featureFlags, null);
+    }
+
+    @VisibleForTesting
+    public InCallController(Context context, TelecomSystem.SyncRoot lock, CallsManager callsManager,
+            SystemStateHelper systemStateHelper, DefaultDialerCache defaultDialerCache,
+            Timeouts.Adapter timeoutsAdapter, EmergencyCallHelper emergencyCallHelper,
+            CarModeTracker carModeTracker, ClockProxy clockProxy, FeatureFlags featureFlags,
+            com.android.internal.telephony.flags.FeatureFlags telephonyFeatureFlags) {
         mContext = context;
         mAppOpsManager = context.getSystemService(AppOpsManager.class);
         mSensorPrivacyManager = context.getSystemService(SensorPrivacyManager.class);
@@ -1263,6 +1275,12 @@ public class InCallController extends CallsManagerListenerBase implements
         userAddedFilter.setPriority(IntentFilter.SYSTEM_HIGH_PRIORITY);
         mContext.registerReceiver(mUserAddedReceiver, userAddedFilter);
         mFeatureFlags = featureFlags;
+        if (telephonyFeatureFlags != null) {
+            mTelephonyFeatureFlags = telephonyFeatureFlags;
+        } else {
+            mTelephonyFeatureFlags =
+                    new com.android.internal.telephony.flags.FeatureFlagsImpl();
+        }
     }
 
     private void restrictPhoneCallOps() {
@@ -1875,13 +1893,14 @@ public class InCallController extends CallsManagerListenerBase implements
     @VisibleForTesting
     public void bindToServices(Call call) {
         UserHandle userFromCall = getUserFromCall(call);
-        UserHandle parentUser = null;
         UserManager um = mContext.getSystemService(UserManager.class);
-
-        if (um.isManagedProfile(userFromCall.getIdentifier())) {
+        UserHandle parentUser = mTelephonyFeatureFlags.workProfileApiSplit()
+                ? um.getProfileParent(userFromCall) : null;
+        if (!mTelephonyFeatureFlags.workProfileApiSplit()
+                && um.isManagedProfile(userFromCall.getIdentifier())) {
             parentUser = um.getProfileParent(userFromCall);
-            Log.i(this, "child:%s  parent:%s", userFromCall, parentUser);
         }
+        Log.i(this, "child:%s  parent:%s", userFromCall, parentUser);
 
         if (!mInCallServiceConnections.containsKey(userFromCall)) {
             InCallServiceConnection dialerInCall = null;
@@ -1954,19 +1973,20 @@ public class InCallController extends CallsManagerListenerBase implements
 
     private void updateNonUiInCallServices(Call call) {
         UserHandle userFromCall = getUserFromCall(call);
-        UserHandle parentUser = null;
 
         UserManager um = mContext.getSystemService(UserManager.class);
-        if(um.isManagedProfile(userFromCall.getIdentifier()))
-        {
+        UserHandle parentUser = mTelephonyFeatureFlags.workProfileApiSplit()
+                ? um.getProfileParent(userFromCall) : null;
+
+        if (!mTelephonyFeatureFlags.workProfileApiSplit()
+                && um.isManagedProfile(userFromCall.getIdentifier())) {
             parentUser = um.getProfileParent(userFromCall);
         }
 
         List<InCallServiceInfo> nonUIInCallComponents =
                 getInCallServiceComponents(userFromCall, IN_CALL_SERVICE_TYPE_NON_UI);
         List<InCallServiceInfo> nonUIInCallComponentsForParent = new ArrayList<>();
-        if(parentUser != null)
-        {
+        if(parentUser != null) {
             //also get Non-UI services using parent handle.
             nonUIInCallComponentsForParent =
                     getInCallServiceComponents(parentUser, IN_CALL_SERVICE_TYPE_NON_UI);
