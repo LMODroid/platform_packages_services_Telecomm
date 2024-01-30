@@ -32,6 +32,7 @@ android_library {
         "androidx.core_core",
         "telecom_flags_core_java_lib",
         "org.lineageos.lib.phone",
+        "framework-lmodroid.static",
     ],
     resource_dirs: ["res"],
     proto: {
