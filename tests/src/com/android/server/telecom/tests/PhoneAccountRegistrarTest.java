@@ -27,6 +27,7 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -90,6 +91,7 @@ import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -1619,6 +1621,107 @@ public class PhoneAccountRegistrarTest extends TelecomTestCase {
         try {
             mRegistrar.enforceLimitsOnSchemes(builder.build());
             fail("should have hit exception in enforceLimitOnSchemes");
+        } catch (IllegalArgumentException e) {
+            // pass test
+        }
+    }
+
+    /**
+     * Ensure an IllegalArgumentException is thrown when adding too many PhoneAccountHandles to
+     * a PhoneAccount.
+     */
+    @Test
+    public void testLimitOnSimultaneousCallingRestriction_tooManyElements() throws Exception {
+        doReturn(true).when(mTelephonyFeatureFlags).simultaneousCallingIndications();
+        mComponentContextFixture.addConnectionService(makeQuickConnectionServiceComponentName(),
+                Mockito.mock(IConnectionService.class));
+        Set<PhoneAccountHandle> tooManyElements = new HashSet<>(11);
+        for (int i = 0; i < 11; i++) {
+            tooManyElements.add(makeQuickAccountHandle(TEST_ID + i));
+        }
+        PhoneAccount tooManyRestrictionsPA = new PhoneAccount.Builder(
+                makeQuickAccountHandle(TEST_ID), TEST_LABEL)
+                .setSimultaneousCallingRestriction(tooManyElements)
+                .build();
+        try {
+            mRegistrar.registerPhoneAccount(tooManyRestrictionsPA);
+            fail("should have hit registrations exception in "
+                    + "enforceSimultaneousCallingRestrictionLimit");
+        } catch (IllegalArgumentException e) {
+            // pass test
+        }
+    }
+
+    /**
+     * Ensure an IllegalArgumentException is thrown when adding a PhoneAccountHandle where the
+     * package name field is too large.
+     */
+    @Test
+    public void testLimitOnSimultaneousCallingRestriction_InvalidPackageName() throws Exception {
+        doReturn(true).when(mTelephonyFeatureFlags).simultaneousCallingIndications();
+        mComponentContextFixture.addConnectionService(makeQuickConnectionServiceComponentName(),
+                Mockito.mock(IConnectionService.class));
+        Set<PhoneAccountHandle> invalidElement = new HashSet<>(1);
+        invalidElement.add(new PhoneAccountHandle(new ComponentName(INVALID_STR, "Class"),
+                TEST_ID));
+        PhoneAccount invalidRestrictionPA = new PhoneAccount.Builder(
+                makeQuickAccountHandle(TEST_ID), TEST_LABEL)
+                .setSimultaneousCallingRestriction(invalidElement)
+                .build();
+        try {
+            mRegistrar.registerPhoneAccount(invalidRestrictionPA);
+            fail("should have hit package name size limit exception in "
+                    + "enforceSimultaneousCallingRestrictionLimit");
+        } catch (IllegalArgumentException e) {
+            // pass test
+        }
+    }
+
+    /**
+     * Ensure an IllegalArgumentException is thrown when adding a PhoneAccountHandle where the
+     * class name field is too large.
+     */
+    @Test
+    public void testLimitOnSimultaneousCallingRestriction_InvalidClassName() throws Exception {
+        doReturn(true).when(mTelephonyFeatureFlags).simultaneousCallingIndications();
+        mComponentContextFixture.addConnectionService(makeQuickConnectionServiceComponentName(),
+                Mockito.mock(IConnectionService.class));
+        Set<PhoneAccountHandle> invalidElement = new HashSet<>(1);
+        invalidElement.add(new PhoneAccountHandle(new ComponentName("pkg", INVALID_STR),
+                TEST_ID));
+        PhoneAccount invalidRestrictionPA = new PhoneAccount.Builder(
+                makeQuickAccountHandle(TEST_ID), TEST_LABEL)
+                .setSimultaneousCallingRestriction(invalidElement)
+                .build();
+        try {
+            mRegistrar.registerPhoneAccount(invalidRestrictionPA);
+            fail("should have hit class name size limit exception in "
+                    + "enforceSimultaneousCallingRestrictionLimit");
+        } catch (IllegalArgumentException e) {
+            // pass test
+        }
+    }
+
+    /**
+     * Ensure an IllegalArgumentException is thrown when adding a PhoneAccountHandle where the
+     * ID field is too large.
+     */
+    @Test
+    public void testLimitOnSimultaneousCallingRestriction_InvalidIdSize() throws Exception {
+        doReturn(true).when(mTelephonyFeatureFlags).simultaneousCallingIndications();
+        mComponentContextFixture.addConnectionService(makeQuickConnectionServiceComponentName(),
+                Mockito.mock(IConnectionService.class));
+        Set<PhoneAccountHandle> invalidIdElement = new HashSet<>(1);
+        invalidIdElement.add(new PhoneAccountHandle(makeQuickConnectionServiceComponentName(),
+                INVALID_STR));
+        PhoneAccount invalidRestrictionPA = new PhoneAccount.Builder(
+                makeQuickAccountHandle(TEST_ID), TEST_LABEL)
+                .setSimultaneousCallingRestriction(invalidIdElement)
+                .build();
+        try {
+            mRegistrar.registerPhoneAccount(invalidRestrictionPA);
+            fail("should have hit ID size limit exception in "
+                    + "enforceSimultaneousCallingRestrictionLimit");
         } catch (IllegalArgumentException e) {
             // pass test
         }
