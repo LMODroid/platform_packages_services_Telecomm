@@ -290,6 +290,8 @@ public class ComponentContextFixture implements TestFixture<Context> {
                 return Context.DROPBOX_SERVICE;
             } else if (svcClass == BugreportManager.class) {
                 return Context.BUGREPORT_SERVICE;
+            } else if (svcClass == TelecomManager.class) {
+                return Context.TELECOM_SERVICE;
             }
             throw new UnsupportedOperationException(svcClass.getName());
         }
