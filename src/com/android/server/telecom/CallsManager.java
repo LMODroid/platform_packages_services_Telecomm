@@ -4669,18 +4669,35 @@ public class CallsManager extends Call.ListenerBase
     }
 
     /**
-     * Determines if there are any ongoing self managed calls for the given package/user.
+     * Determines if there are any ongoing self-managed calls for the given package/user.
      * @param packageName The package name to check.
-     * @param userHandle The userhandle to check.
+     * @param userHandle The {@link UserHandle} to check.
      * @return {@code true} if the app has ongoing calls, or {@code false} otherwise.
      */
     public boolean isInSelfManagedCall(String packageName, UserHandle userHandle) {
+        return isInSelfManagedCallCrossUsers(packageName, userHandle, false);
+    }
+
+    /**
+     * Determines if there are any ongoing self-managed calls for the given package/user (unless
+     * hasCrossUsers has been enabled).
+     * @param packageName The package name to check.
+     * @param userHandle The {@link UserHandle} to check.
+     * @param hasCrossUserAccess indicates if calls across all users should be returned.
+     * @return {@code true} if the app has ongoing calls, or {@code false} otherwise.
+     */
+    public boolean isInSelfManagedCallCrossUsers(
+            String packageName, UserHandle userHandle, boolean hasCrossUserAccess) {
         return mSelfManagedCallsBeingSetup.stream().anyMatch(c -> c.isSelfManaged()
                 && c.getTargetPhoneAccount().getComponentName().getPackageName().equals(packageName)
-                && c.getTargetPhoneAccount().getUserHandle().equals(userHandle)) ||
-                mCalls.stream().anyMatch(c -> c.isSelfManaged()
+                && (!hasCrossUserAccess
+                        ? c.getTargetPhoneAccount().getUserHandle().equals(userHandle)
+                        : true))
+                || mCalls.stream().anyMatch(c -> c.isSelfManaged()
                 && c.getTargetPhoneAccount().getComponentName().getPackageName().equals(packageName)
-                && c.getTargetPhoneAccount().getUserHandle().equals(userHandle));
+                && (!hasCrossUserAccess
+                        ? c.getTargetPhoneAccount().getUserHandle().equals(userHandle)
+                        : true));
     }
 
     @VisibleForTesting

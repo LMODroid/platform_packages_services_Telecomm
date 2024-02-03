@@ -16,7 +16,7 @@
 
 package com.android.server.telecom;
 
-import static android.telephony.TelephonyManager.EmergencyCallDiagnosticParams;
+import static android.telephony.TelephonyManager.EmergencyCallDiagnosticData;
 
 import android.os.BugreportManager;
 import android.os.DropBoxManager;
@@ -156,19 +156,19 @@ public class EmergencyCallDiagnosticLogger extends CallsManagerListenerBase
         List<Integer> dataCollectionTypes = getDataCollectionTypes(reason);
         boolean invokeTelephonyPersistApi = false;
         CallEventTimestamps ts = mEmergencyCallsMap.get(call);
-        EmergencyCallDiagnosticParams.Builder callDiagnosticBuilder =
-                new EmergencyCallDiagnosticParams.Builder();
+        EmergencyCallDiagnosticData.Builder callDiagnosticBuilder =
+                new EmergencyCallDiagnosticData.Builder();
         for (Integer dataCollectionType : dataCollectionTypes) {
             switch (dataCollectionType) {
                 case COLLECTION_TYPE_TELECOM_STATE:
                     if (isTelecomDumpCollectionEnabled()) {
-                        callDiagnosticBuilder.setTelecomDumpSysCollectionEnabled(true);
+                        callDiagnosticBuilder.setTelecomDumpsysCollectionEnabled(true);
                         invokeTelephonyPersistApi = true;
                     }
                     break;
                 case COLLECTION_TYPE_TELEPHONY_STATE:
                     if (isTelephonyDumpCollectionEnabled()) {
-                        callDiagnosticBuilder.setTelephonyDumpSysCollectionEnabled(true);
+                        callDiagnosticBuilder.setTelephonyDumpsysCollectionEnabled(true);
                         invokeTelephonyPersistApi = true;
                     }
                     break;
@@ -192,14 +192,14 @@ public class EmergencyCallDiagnosticLogger extends CallsManagerListenerBase
                 default:
             }
         }
-        EmergencyCallDiagnosticParams dp = callDiagnosticBuilder.build();
+        EmergencyCallDiagnosticData ecdData = callDiagnosticBuilder.build();
         if (invokeTelephonyPersistApi) {
             mAsyncTaskExecutor.execute(new Runnable() {
                 @Override
                 public void run() {
-                    Log.i(this, "Requesting Telephony to persist data %s", dp.toString());
+                    Log.i(this, "Requesting Telephony to persist data %s", ecdData.toString());
                     try {
-                        mTelephonyManager.persistEmergencyCallDiagnosticData(DROPBOX_TAG, dp);
+                        mTelephonyManager.persistEmergencyCallDiagnosticData(DROPBOX_TAG, ecdData);
                     } catch (Exception e) {
                         Log.w(this,
                                 "Exception while invoking "

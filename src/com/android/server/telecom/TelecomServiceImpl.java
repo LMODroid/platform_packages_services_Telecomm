@@ -1994,8 +1994,12 @@ public class TelecomServiceImpl {
 
             if (args != null && args.length > 0 && Analytics.ANALYTICS_DUMPSYS_ARG.equals(
                     args[0])) {
-                Binder.withCleanCallingIdentity(() ->
-                        Analytics.dumpToEncodedProto(mContext, writer, args));
+                long token = Binder.clearCallingIdentity();
+                try {
+                    Analytics.dumpToEncodedProto(mContext, writer, args);
+                } finally {
+                    Binder.restoreCallingIdentity(token);
+                }
                 return;
             }
 
@@ -2243,7 +2247,8 @@ public class TelecomServiceImpl {
             try {
                 synchronized (mLock) {
                     enforceShellOnly(Binder.getCallingUid(), "cleanupStuckCalls");
-                    Binder.withCleanCallingIdentity(() -> {
+                    long token = Binder.clearCallingIdentity();
+                    try {
                         Set<UserHandle> userHandles = new HashSet<>();
                         for (Call call : mCallsManager.getCalls()) {
                             call.cleanup();
@@ -2256,7 +2261,9 @@ public class TelecomServiceImpl {
                         for (UserHandle userHandle : userHandles) {
                             mCallsManager.getInCallController().unbindFromServices(userHandle);
                         }
-                    });
+                    } finally {
+                        Binder.restoreCallingIdentity(token);
+                    }
                 }
             } finally {
                 Log.endSession();
@@ -2333,11 +2340,14 @@ public class TelecomServiceImpl {
             try {
                 synchronized (mLock) {
                     enforceShellOnly(Binder.getCallingUid(), "resetCarMode");
-                    Binder.withCleanCallingIdentity(() -> {
+                    long token = Binder.clearCallingIdentity();
+                    try {
                         UiModeManager uiModeManager =
                                 mContext.getSystemService(UiModeManager.class);
                         uiModeManager.disableCarMode(UiModeManager.DISABLE_CAR_MODE_ALL_PRIORITIES);
-                    });
+                    } finally {
+                        Binder.restoreCallingIdentity(token);
+                    }
                 }
             } finally {
                 Log.endSession();
@@ -2500,19 +2510,18 @@ public class TelecomServiceImpl {
          */
         @Override
         public boolean isInSelfManagedCall(String packageName, UserHandle userHandle,
-                String callingPackage) {
+                String callingPackage, boolean hasCrossUserAccess) {
             try {
-                if (Binder.getCallingUid() != Process.SYSTEM_UID) {
-                    throw new SecurityException("Only the system can call this API");
-                }
                 mContext.enforceCallingOrSelfPermission(READ_PRIVILEGED_PHONE_STATE,
                         "READ_PRIVILEGED_PHONE_STATE required.");
+                enforceInAppCrossUserPermission();
 
                 Log.startSession("TSI.iISMC", Log.getPackageAbbreviation(callingPackage));
                 synchronized (mLock) {
                     long token = Binder.clearCallingIdentity();
                     try {
-                        return mCallsManager.isInSelfManagedCall(packageName, userHandle);
+                        return mCallsManager.isInSelfManagedCallCrossUsers(
+                                packageName, userHandle, hasCrossUserAccess);
                     } finally {
                         Binder.restoreCallingIdentity(token);
                     }
