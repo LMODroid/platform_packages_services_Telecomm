@@ -2506,22 +2506,28 @@ public class TelecomServiceImpl {
          * @param packageName    the package name of the app to check calls for.
          * @param userHandle     the user handle on which to check for calls.
          * @param callingPackage The caller's package name.
+         * @param detectForAllUsers indicates if calls should be detected across all users. If it is
+         *                          set to true, the userHandle parameter is disregarded.
          * @return {@code true} if there are ongoing calls, {@code false} otherwise.
          */
         @Override
         public boolean isInSelfManagedCall(String packageName, UserHandle userHandle,
-                String callingPackage, boolean hasCrossUserAccess) {
+                String callingPackage, boolean detectForAllUsers) {
             try {
                 mContext.enforceCallingOrSelfPermission(READ_PRIVILEGED_PHONE_STATE,
                         "READ_PRIVILEGED_PHONE_STATE required.");
-                enforceInAppCrossUserPermission();
+                // Ensure that the caller has the INTERACT_ACROSS_USERS permission if it's trying
+                // to access calls that don't belong to it.
+                if (detectForAllUsers || !Binder.getCallingUserHandle().equals(userHandle)) {
+                    enforceInAppCrossUserPermission();
+                }
 
                 Log.startSession("TSI.iISMC", Log.getPackageAbbreviation(callingPackage));
                 synchronized (mLock) {
                     long token = Binder.clearCallingIdentity();
                     try {
                         return mCallsManager.isInSelfManagedCallCrossUsers(
-                                packageName, userHandle, hasCrossUserAccess);
+                                packageName, userHandle, detectForAllUsers);
                     } finally {
                         Binder.restoreCallingIdentity(token);
                     }
