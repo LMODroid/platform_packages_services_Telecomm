@@ -6,8 +6,8 @@ package {
 genrule {
     name: "statslog-telecom-java-gen",
     tools: ["stats-log-api-gen"],
-    cmd: "$(location stats-log-api-gen) --java $(out) --module telecom"
-        + " --javaPackage com.android.server.telecom --javaClass TelecomStatsLog",
+    cmd: "$(location stats-log-api-gen) --java $(out) --module telecom" +
+        " --javaPackage com.android.server.telecom --javaClass TelecomStatsLog",
     out: ["com/android/server/telecom/TelecomStatsLog.java"],
 }
 
