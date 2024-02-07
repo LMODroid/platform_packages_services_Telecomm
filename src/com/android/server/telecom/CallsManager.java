@@ -164,6 +164,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -962,8 +963,10 @@ public class CallsManager extends Call.ListenerBase
 
         if (incomingCall.getState() != CallState.DISCONNECTED &&
                 incomingCall.getState() != CallState.DISCONNECTING) {
-            setCallState(incomingCall, CallState.RINGING,
-                    result.shouldAllowCall ? "successful incoming call" : "blocking call");
+            if (!mFeatureFlags.separatelyBindToBtIncallService()) {
+                setCallState(incomingCall, CallState.RINGING,
+                        result.shouldAllowCall ? "successful incoming call" : "blocking call");
+            }
         } else {
             Log.i(this, "onCallFilteringCompleted: call already disconnected.");
             return;
@@ -1008,6 +1011,10 @@ public class CallsManager extends Call.ListenerBase
         }
 
         if (result.shouldAllowCall) {
+            if (mFeatureFlags.separatelyBindToBtIncallService()) {
+                incomingCall.setBtIcsFuture(mInCallController.bindToBTService(incomingCall));
+                setCallState(incomingCall, CallState.RINGING, "successful incoming call");
+            }
             incomingCall.setPostCallPackageName(
                     getRoleManagerAdapter().getDefaultCallScreeningApp(
                             incomingCall.getAssociatedUser()
@@ -1022,7 +1029,6 @@ public class CallsManager extends Call.ListenerBase
                             "Exceeds maximum number of ringing calls.");
                     incomingCall.setMissedReason(AUTO_MISSED_MAXIMUM_RINGING);
                     autoMissCallAndLog(incomingCall, result);
-                    return;
                 }
             } else if (hasMaximumManagedDialingCalls(incomingCall)) {
                 if (shouldSilenceInsteadOfReject(incomingCall)) {
@@ -1032,7 +1038,6 @@ public class CallsManager extends Call.ListenerBase
                             "dialing calls.");
                     incomingCall.setMissedReason(AUTO_MISSED_MAXIMUM_DIALING);
                     autoMissCallAndLog(incomingCall, result);
-                    return;
                 }
             } else if (result.shouldScreenViaAudio) {
                 Log.i(this, "onCallFilteringCompleted: starting background audio processing");
@@ -1051,6 +1056,9 @@ public class CallsManager extends Call.ListenerBase
         } else {
             if (result.shouldReject) {
                 Log.i(this, "onCallFilteringCompleted: blocked call, rejecting.");
+                if (mFeatureFlags.separatelyBindToBtIncallService()) {
+                    setCallState(incomingCall, CallState.RINGING, "blocking call");
+                }
                 incomingCall.reject(false, null);
             }
             if (result.shouldAddToCallLog) {

@@ -27,13 +27,11 @@ import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.OutcomeReceiver;
 import android.os.ParcelFileDescriptor;
-import android.os.Parcelable;
 import android.os.RemoteException;
 import android.os.SystemClock;
 import android.os.Trace;
@@ -73,7 +71,6 @@ import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telecom.IVideoProvider;
 import com.android.internal.util.Preconditions;
 import com.android.server.telecom.flags.FeatureFlags;
-import com.android.server.telecom.flags.Flags;
 import com.android.server.telecom.stats.CallFailureCause;
 import com.android.server.telecom.stats.CallStateChangedAtomWriter;
 import com.android.server.telecom.ui.ToastFactory;
@@ -95,6 +92,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -795,6 +793,13 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
      * {@link CallDiagnostics#onCallDisconnected(int, int)}.
      */
     private CompletableFuture<Boolean> mDisconnectFuture;
+
+    /**
+     * {@link CompletableFuture} used to delay audio routing change for a ringing call until the
+     * corresponding bluetooth {@link android.telecom.InCallService} is successfully bound or timed
+     * out.
+     */
+    private CompletableFuture<Boolean> mBtIcsFuture;
 
     private FeatureFlags mFlags;
 
@@ -4689,6 +4694,30 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
         if (mDisconnectFuture != null) {
             mDisconnectFuture.complete(false);
             mDisconnectFuture = null;
+        }
+    }
+
+    /**
+     * Set the bluetooth {@link android.telecom.InCallService} binding completion or timeout future
+     * which is used to delay the audio routing change after the bluetooth stack get notified about
+     * the ringing calls.
+     * @param btIcsFuture the {@link CompletableFuture}
+     */
+    public void setBtIcsFuture(CompletableFuture<Boolean> btIcsFuture) {
+        mBtIcsFuture = btIcsFuture;
+    }
+
+    /**
+     * Wait for bluetooth {@link android.telecom.InCallService} binding completion or timeout. Used
+     * for audio routing operations for a ringing call.
+     */
+    public void waitForBtIcs() {
+        if (mBtIcsFuture != null) {
+            try {
+                mBtIcsFuture.get();
+            } catch (InterruptedException | ExecutionException e) {
+                // ignore
+            }
         }
     }
 

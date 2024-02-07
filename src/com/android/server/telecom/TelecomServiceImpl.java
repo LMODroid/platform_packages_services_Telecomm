@@ -1599,7 +1599,7 @@ public class TelecomServiceImpl {
                                         && accountExtra != null && accountExtra.getBoolean(
                                         PhoneAccount.EXTRA_SKIP_CALL_FILTERING,
                                         false)) {
-                                    mCallsManager.getInCallController().bindToServices(null);
+                                    mCallsManager.getInCallController().bindToServices(null, false);
                                 }
                             }
                         } finally {
