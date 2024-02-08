@@ -646,9 +646,11 @@ public class CallsManager extends Call.ListenerBase
                     featureFlags
             );
         } else {
-            callAudioRouteAdapter = new CallAudioRouteController();
+            callAudioRouteAdapter = new CallAudioRouteController(
+                    context, this, new AudioRoute.Factory(), wiredHeadsetManager);
         }
         callAudioRouteAdapter.initialize();
+        bluetoothStateReceiver.setCallAudioRouteAdapter(callAudioRouteAdapter);
 
         CallAudioRoutePeripheralAdapter callAudioRoutePeripheralAdapter =
                 new CallAudioRoutePeripheralAdapter(
