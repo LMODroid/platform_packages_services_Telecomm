@@ -87,6 +87,7 @@ public class AnalyticsTests extends TelecomSystemTest {
         super.setUp();
         // this is a mock
         mSubscriptionManager = mContext.getSystemService(SubscriptionManager.class);
+        when(mSubscriptionManager.createForAllUserProfiles()).thenReturn(mSubscriptionManager);
         when(mSubscriptionManager.getActiveSubscriptionInfoList())
                 .thenReturn(Collections.emptyList());
     }
