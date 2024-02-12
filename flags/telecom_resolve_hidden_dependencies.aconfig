@@ -1,4 +1,5 @@
 package: "com.android.server.telecom.flags"
+container: "system"
 
 flag {
     name: "telecom_resolve_hidden_dependencies"
