@@ -16,12 +16,14 @@
 
 package com.android.server.telecom.tests;
 
-import static android.provider.BlockedNumberContract.STATUS_BLOCKED_IN_LIST;
-import static android.provider.BlockedNumberContract.STATUS_NOT_BLOCKED;
+import static com.android.server.telecom.callfiltering.BlockCheckerFilter.STATUS_BLOCKED_IN_LIST;
+import static com.android.server.telecom.callfiltering.BlockCheckerFilter.STATUS_NOT_BLOCKED;
 
 import static junit.framework.TestCase.assertEquals;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
@@ -93,7 +95,7 @@ public class BlockCheckerFilterTest extends TelecomTestCase {
     @Test
     public void testBlockNumber() throws Exception {
         when(mBlockCheckerAdapter.getBlockStatus(any(Context.class),
-                eq(TEST_HANDLE.getSchemeSpecificPart()), any(Bundle.class)))
+                eq(TEST_HANDLE.getSchemeSpecificPart()), anyInt(), anyBoolean()))
                 .thenReturn(STATUS_BLOCKED_IN_LIST);
 
         setEnhancedBlockingEnabled(false);
@@ -105,7 +107,7 @@ public class BlockCheckerFilterTest extends TelecomTestCase {
     @Test
     public void testBlockNumberWhenEnhancedBlockingEnabled() throws Exception {
         when(mBlockCheckerAdapter.getBlockStatus(any(Context.class),
-                eq(TEST_HANDLE.getSchemeSpecificPart()), any(Bundle.class)))
+                eq(TEST_HANDLE.getSchemeSpecificPart()), anyInt(), anyBoolean()))
                 .thenReturn(STATUS_BLOCKED_IN_LIST);
 
         setEnhancedBlockingEnabled(true);
@@ -119,7 +121,7 @@ public class BlockCheckerFilterTest extends TelecomTestCase {
     @Test
     public void testDontBlockNumber() throws Exception {
         when(mBlockCheckerAdapter.getBlockStatus(any(Context.class),
-                eq(TEST_HANDLE.getSchemeSpecificPart()), any(Bundle.class)))
+                eq(TEST_HANDLE.getSchemeSpecificPart()), anyInt(), anyBoolean()))
                 .thenReturn(STATUS_NOT_BLOCKED);
 
         setEnhancedBlockingEnabled(false);
@@ -131,7 +133,7 @@ public class BlockCheckerFilterTest extends TelecomTestCase {
     @Test
     public void testDontBlockNumberWhenEnhancedBlockingEnabled() throws Exception {
         when(mBlockCheckerAdapter.getBlockStatus(any(Context.class),
-                eq(TEST_HANDLE.getSchemeSpecificPart()), any(Bundle.class)))
+                eq(TEST_HANDLE.getSchemeSpecificPart()), anyInt(), anyBoolean()))
                 .thenReturn(STATUS_NOT_BLOCKED);
 
         setEnhancedBlockingEnabled(true);

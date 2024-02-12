@@ -1951,7 +1951,7 @@ public class TelecomServiceImpl {
                 synchronized (mLock) {
                     long token = Binder.clearCallingIdentity();
                     try {
-                        BlockedNumberContract.SystemContract.endBlockSuppression(mContext);
+                        BlockedNumberContract.BlockedNumbers.endBlockSuppression(mContext);
                     } finally {
                         Binder.restoreCallingIdentity(token);
                     }
