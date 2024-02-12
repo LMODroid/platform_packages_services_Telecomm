@@ -22,10 +22,16 @@ flag{
   bug: "292597423"
 }
 
-
 flag{
   name: "set_mute_state"
   namespace: "telecom"
   description: "transactional calls need the ability to mute the call audio input"
   bug: "310669304"
+}
+
+flag{
+  name: "business_call_composer"
+  namespace: "telecom"
+  description: "Enables enriched calling features (e.g. Business name will show for a call)"
+  bug: "311688497"
 }
