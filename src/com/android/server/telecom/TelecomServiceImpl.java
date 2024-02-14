@@ -239,6 +239,9 @@ public class TelecomServiceImpl {
                                                 callEventCallback, mCallsManager, call);
 
                         call.setTransactionServiceWrapper(serviceWrapper);
+                        if (mFeatureFlags.transactionalVideoState()) {
+                            call.setTransactionalCallSupportsVideoCalling(callAttributes);
+                        }
                         ICallControl clientCallControl = serviceWrapper.getICallControl();
 
                         if (clientCallControl == null) {

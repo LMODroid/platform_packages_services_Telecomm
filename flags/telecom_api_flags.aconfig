@@ -30,6 +30,13 @@ flag{
 }
 
 flag{
+  name: "transactional_video_state"
+  namespace: "telecom"
+  description: "when set, clients using transactional implementations will be able to set & get the video state"
+  bug: "311265260"
+}
+
+flag{
   name: "business_call_composer"
   namespace: "telecom"
   description: "Enables enriched calling features (e.g. Business name will show for a call)"
