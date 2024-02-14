@@ -787,6 +787,9 @@ public class TelecomServiceImpl {
                         Bundle extras = account.getExtras();
                         if (extras != null
                                 && extras.getBoolean(PhoneAccount.EXTRA_SKIP_CALL_FILTERING)) {
+                            // System apps should be granted the MODIFY_PHONE_STATE permission.
+                            enforceModifyPermission(
+                                    "registerPhoneAccount requires MODIFY_PHONE_STATE permission.");
                             enforceRegisterSkipCallFiltering();
                         }
                         final int callingUid = Binder.getCallingUid();
@@ -1951,7 +1954,7 @@ public class TelecomServiceImpl {
                 synchronized (mLock) {
                     long token = Binder.clearCallingIdentity();
                     try {
-                        BlockedNumberContract.SystemContract.endBlockSuppression(mContext);
+                        BlockedNumberContract.BlockedNumbers.endBlockSuppression(mContext);
                     } finally {
                         Binder.restoreCallingIdentity(token);
                     }

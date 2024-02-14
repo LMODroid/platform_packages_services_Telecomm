@@ -3194,7 +3194,7 @@ public class CallsManagerTest extends TelecomTestCase {
                 .thenReturn(true);
         mComponentContextFixture.getBroadcastReceivers().forEach(c -> c.onReceive(mContext,
                 new Intent(
-                        BlockedNumberContract.SystemContract
+                        BlockedNumberContract.BlockedNumbers
                                 .ACTION_BLOCK_SUPPRESSION_STATE_CHANGED)));
         verify(mBlockedNumbersAdapter).updateEmergencyCallNotification(any(Context.class),
                 eq(true));
@@ -3203,7 +3203,7 @@ public class CallsManagerTest extends TelecomTestCase {
                 .thenReturn(false);
         mComponentContextFixture.getBroadcastReceivers().forEach(c -> c.onReceive(mContext,
                 new Intent(
-                        BlockedNumberContract.SystemContract
+                        BlockedNumberContract.BlockedNumbers
                                 .ACTION_BLOCK_SUPPRESSION_STATE_CHANGED)));
         verify(mBlockedNumbersAdapter).updateEmergencyCallNotification(any(Context.class),
                 eq(false));

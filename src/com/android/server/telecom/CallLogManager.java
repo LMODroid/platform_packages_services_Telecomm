@@ -54,6 +54,7 @@ import android.util.Pair;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.server.telecom.callfiltering.CallFilteringResult;
 import com.android.server.telecom.flags.FeatureFlags;
+import com.android.server.telecom.flags.Flags;
 
 import java.util.Arrays;
 import java.util.Locale;
@@ -418,7 +419,12 @@ public final class CallLogManager extends CallsManagerListenerBase {
         paramBuilder.setCallType(callLogType);
         paramBuilder.setIsRead(call.isSelfManaged());
         paramBuilder.setMissedReason(call.getMissedReason());
-
+        if (Flags.businessCallComposer() && call.getExtras() != null) {
+            paramBuilder.setIsBusinessCall(call.getExtras().getBoolean(
+                    android.telecom.Call.EXTRA_IS_BUSINESS_CALL, false));
+            paramBuilder.setBusinessName(call.getExtras().getString(
+                    android.telecom.Call.EXTRA_ASSERTED_DISPLAY_NAME, ""));
+        }
         sendAddCallBroadcast(callLogType, call.getAgeMillis());
 
         boolean okayToLog =
