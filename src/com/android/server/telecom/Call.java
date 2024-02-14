@@ -3171,8 +3171,7 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
             } else if (mConnectionService != null) {
                 mConnectionService.onExtrasChanged(this, mExtras);
             } else {
-                Log.e(this, new NullPointerException(),
-                        "putExtras failed due to null CS callId=%s", getId());
+                Log.w(this, "putExtras failed due to null CS callId=%s", getId());
             }
         }
     }
