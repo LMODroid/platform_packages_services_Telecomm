@@ -19,6 +19,8 @@ package com.android.server.telecom;
 import static android.provider.CallLog.Calls.MISSED_REASON_NOT_MISSED;
 import static android.telephony.TelephonyManager.EVENT_DISPLAY_EMERGENCY_MESSAGE;
 
+import static com.android.server.telecom.voip.VideoStateTranslation.VideoProfileStateToTransactionalVideoState;
+
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.content.Context;
@@ -650,6 +652,36 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
      * {@code True} if the phone account supports video calling, {@code false} otherwise.
      */
     private boolean mIsVideoCallingSupportedByPhoneAccount = false;
+
+    /**
+     * Indicates whether this individual calls video state can be changed as opposed to be gated
+     * by the {@link PhoneAccount}.
+     *
+     * {@code True} if the call is Transactional && has the CallAttributes.SUPPORTS_VIDEO_CALLING
+     * capability {@code false} otherwise.
+     */
+    private boolean mTransactionalCallSupportsVideoCalling = false;
+
+    public void setTransactionalCallSupportsVideoCalling(CallAttributes callAttributes) {
+        if (!mIsTransactionalCall) {
+            Log.i(this, "setTransactionalCallSupportsVideoCalling: call is not transactional");
+            return;
+        }
+        if (callAttributes == null) {
+            Log.i(this, "setTransactionalCallSupportsVideoCalling: callAttributes is null");
+            return;
+        }
+        if ((callAttributes.getCallCapabilities() & CallAttributes.SUPPORTS_VIDEO_CALLING)
+                == CallAttributes.SUPPORTS_VIDEO_CALLING) {
+            mTransactionalCallSupportsVideoCalling = true;
+        } else {
+            mTransactionalCallSupportsVideoCalling = false;
+        }
+    }
+
+    public boolean isTransactionalCallSupportsVideoCalling() {
+        return mTransactionalCallSupportsVideoCalling;
+    }
 
     /**
      * Indicates whether or not this call can be pulled if it is an external call. If true, respect
@@ -3176,8 +3208,7 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
             } else if (mConnectionService != null) {
                 mConnectionService.onExtrasChanged(this, mExtras);
             } else {
-                Log.e(this, new NullPointerException(),
-                        "putExtras failed due to null CS callId=%s", getId());
+                Log.w(this, "putExtras failed due to null CS callId=%s", getId());
             }
         }
     }
@@ -4023,6 +4054,15 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
             videoState = VideoProfile.STATE_AUDIO_ONLY;
         }
 
+        // Transactional calls have the ability to change video calling capabilities on a per-call
+        // basis as opposed to ConnectionService calls which are only based on the PhoneAccount.
+        if (mFlags.transactionalVideoState()
+                && mIsTransactionalCall && !mTransactionalCallSupportsVideoCalling) {
+            Log.i(this, "setVideoState: The transactional does NOT support video calling."
+                    + " defaulted to audio (video not supported)");
+            videoState = VideoProfile.STATE_AUDIO_ONLY;
+        }
+
         // Track Video State history during the duration of the call.
         // Only update the history when the call is active or disconnected. This ensures we do
         // not include the video state history when:
@@ -4043,6 +4083,12 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
             for (Listener l : mListeners) {
                 l.onVideoStateChanged(this, previousVideoState, mVideoState);
             }
+        }
+
+        if (mFlags.transactionalVideoState()
+                && mIsTransactionalCall && mTransactionalService != null) {
+            int transactionalVS = VideoProfileStateToTransactionalVideoState(mVideoState);
+            mTransactionalService.onVideoStateChanged(this, transactionalVS);
         }
 
         if (VideoProfile.isVideo(videoState)) {
