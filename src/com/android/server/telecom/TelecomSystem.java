@@ -425,6 +425,7 @@ public class TelecomSystem {
                     emergencyCallDiagnosticLogger,
                     communicationDeviceTracker,
                     callStreamingNotification,
+                    bluetoothDeviceManager,
                     featureFlags,
                     IncomingCallFilterGraph::new);
 

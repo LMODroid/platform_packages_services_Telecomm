@@ -403,7 +403,8 @@ public class BluetoothDeviceManagerTest extends TelecomTestCase {
         when(mAdapter.setActiveDevice(nullable(BluetoothDevice.class),
                     eq(BluetoothAdapter.ACTIVE_DEVICE_ALL))).thenReturn(true);
         mBluetoothDeviceManager.connectAudio(device1.getAddress(), false);
-        verify(mAdapter).setActiveDevice(device1, BluetoothAdapter.ACTIVE_DEVICE_PHONE_CALL);
+        verify(mAdapter).setActiveDevice(eq(device1),
+                eq(BluetoothAdapter.ACTIVE_DEVICE_PHONE_CALL));
         verify(mAdapter, never()).setActiveDevice(nullable(BluetoothDevice.class),
                 eq(BluetoothAdapter.ACTIVE_DEVICE_ALL));
         mBluetoothDeviceManager.disconnectAudio();
