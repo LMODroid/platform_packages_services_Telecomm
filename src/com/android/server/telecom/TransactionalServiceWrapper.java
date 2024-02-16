@@ -43,10 +43,10 @@ import com.android.server.telecom.voip.EndpointChangeTransaction;
 import com.android.server.telecom.voip.HoldCallTransaction;
 import com.android.server.telecom.voip.EndCallTransaction;
 import com.android.server.telecom.voip.MaybeHoldCallForNewCallTransaction;
-import com.android.server.telecom.voip.ParallelTransaction;
 import com.android.server.telecom.voip.RequestNewActiveCallTransaction;
 import com.android.server.telecom.voip.SerialTransaction;
 import com.android.server.telecom.voip.SetMuteStateTransaction;
+import com.android.server.telecom.voip.RequestVideoStateTransaction;
 import com.android.server.telecom.voip.TransactionManager;
 import com.android.server.telecom.voip.VoipCallTransaction;
 import com.android.server.telecom.voip.VoipCallTransactionResult;
@@ -71,6 +71,7 @@ public class TransactionalServiceWrapper implements
     public static final String ANSWER = "Answer";
     public static final String DISCONNECT = "Disconnect";
     public static final String START_STREAMING = "StartStreaming";
+    public static final String REQUEST_VIDEO_STATE = "RequestVideoState";
 
     // CallEventCallback : Telecom --> Client (ex. voip app)
     public static final String ON_SET_ACTIVE = "onSetActive";
@@ -248,6 +249,17 @@ public class TransactionalServiceWrapper implements
             }
         }
 
+        @Override
+        public void requestVideoState(int videoState, String callId, ResultReceiver callback)
+                throws RemoteException {
+            try {
+                Log.startSession("TSW.rVS");
+                createTransactions(callId, callback, REQUEST_VIDEO_STATE, videoState);
+            } finally {
+                Log.endSession();
+            }
+        }
+
         private void createTransactions(String callId, ResultReceiver callback, String action,
                 Object... objects) {
             Log.d(TAG, "createTransactions: callId=" + callId);
@@ -273,6 +285,11 @@ public class TransactionalServiceWrapper implements
                     case START_STREAMING:
                         addTransactionsToManager(mStreamingController.getStartStreamingTransaction(mCallsManager,
                                 TransactionalServiceWrapper.this, call, mLock), callback);
+                        break;
+                    case REQUEST_VIDEO_STATE:
+                        addTransactionsToManager(
+                                new RequestVideoStateTransaction(mCallsManager, call,
+                                        (int) objects[0]), callback);
                         break;
                 }
             } else {
@@ -557,6 +574,15 @@ public class TransactionalServiceWrapper implements
         if (call != null) {
             try {
                 mICallEventCallback.onMuteStateChanged(call.getId(), isMuted);
+            } catch (RemoteException e) {
+            }
+        }
+    }
+
+    public void onVideoStateChanged(Call call, int videoState) {
+        if (call != null) {
+            try {
+                mICallEventCallback.onVideoStateChanged(call.getId(), videoState);
             } catch (RemoteException e) {
             }
         }
