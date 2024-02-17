@@ -77,7 +77,6 @@ import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telecom.ICallControl;
 import com.android.internal.telecom.ICallEventCallback;
 import com.android.internal.telecom.ITelecomService;
-import com.android.internal.telephony.flags.Flags;
 import com.android.internal.util.IndentingPrintWriter;
 import com.android.server.telecom.components.UserCallIntentProcessorFactory;
 import com.android.server.telecom.flags.FeatureFlags;
@@ -592,6 +591,53 @@ public class TelecomServiceImpl {
                         Log.e(this, e, "getPhoneAccount %s", accountHandle);
                         mAnomalyReporter.reportAnomaly(GET_PHONE_ACCOUNT_ERROR_UUID,
                                 GET_PHONE_ACCOUNT_ERROR_MSG);
+                        throw e;
+                    } finally {
+                        Binder.restoreCallingIdentity(token);
+                    }
+                }
+            } finally {
+                Log.endSession();
+            }
+        }
+
+        @Override
+        public ParceledListSlice<PhoneAccount> getRegisteredPhoneAccounts(String callingPackage,
+                String callingFeatureId) {
+            try {
+                Log.startSession("TSI.gRPA", Log.getPackageAbbreviation(callingPackage));
+                try {
+                    enforceCallingPackage(callingPackage, "getRegisteredPhoneAccounts");
+                } catch (SecurityException se) {
+                    EventLog.writeEvent(0x534e4554, "307609763", Binder.getCallingUid(),
+                            "getRegisteredPhoneAccounts: invalid calling package");
+                    throw se;
+                }
+
+                boolean hasCrossUserAccess = false;
+                try {
+                    enforceInAppCrossUserPermission();
+                    hasCrossUserAccess = true;
+                } catch (SecurityException e) {
+                    // pass through
+                }
+
+                synchronized (mLock) {
+                    final UserHandle callingUserHandle = Binder.getCallingUserHandle();
+                    long token = Binder.clearCallingIdentity();
+                    try {
+                        return new ParceledListSlice<>(
+                                mPhoneAccountRegistrar.getPhoneAccounts(
+                                        0 /* capabilities */,
+                                        0 /* excludedCapabilities */,
+                                        null /* UriScheme */,
+                                        callingPackage,
+                                        true /* includeDisabledAccounts */,
+                                        callingUserHandle,
+                                        hasCrossUserAccess /* crossUserAccess */,
+                                        false /* includeAll */));
+                    } catch (Exception e) {
+                        Log.e(this, e, "getRegisteredPhoneAccounts");
                         throw e;
                     } finally {
                         Binder.restoreCallingIdentity(token);
@@ -3119,7 +3165,6 @@ public class TelecomServiceImpl {
         throw new SecurityException("Package " + callingPackage
                 + " does not meet the requirements to access the phone number");
     }
-
 
     private boolean canReadPrivilegedPhoneState(String callingPackage, String message) {
         // The system/default dialer can always read phone state - so that emergency calls will

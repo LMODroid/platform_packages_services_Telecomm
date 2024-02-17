@@ -76,9 +76,7 @@ public class PendingAudioRoute {
     public void onMessageReceived(int message) {
         if (message == PENDING_ROUTE_FAILED) {
             // Fallback to base route
-            //TODO: Replace getPreferredAudioRouteFromDefault by getBaseRoute when available and
-            // make the replaced one private
-            mDestRoute = mCallAudioRouteController.getPreferredAudioRouteFromDefault(true);
+            mDestRoute = mCallAudioRouteController.getBaseRoute(true);
             mCallAudioRouteController.sendMessageWithSessionInfo(
                     CallAudioRouteAdapter.EXIT_PENDING_ROUTE);
         }
