@@ -14,3 +14,10 @@ flag {
   description: "This fix ensures the MO calls won't switch from Active to Quite b/c setDialing was not called"
   bug: "309540769"
 }
+
+flag {
+  name: "enable_call_sequencing"
+  namespace: "telecom"
+  description: "Enables simultaneous call sequencing for SIM PhoneAccounts"
+  bug: "297446980"
+}

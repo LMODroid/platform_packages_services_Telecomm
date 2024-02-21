@@ -1351,7 +1351,6 @@ public class ConnectionServiceWrapper extends ServiceBinder implements
     private final CallsManager mCallsManager;
     private final AppOpsManager mAppOpsManager;
     private final Context mContext;
-    private final FeatureFlags mFlags;
 
     private ConnectionServiceFocusManager.ConnectionServiceFocusListener mConnSvrFocusListener;
 
@@ -1386,7 +1385,6 @@ public class ConnectionServiceWrapper extends ServiceBinder implements
         mCallsManager = callsManager;
         mAppOpsManager = (AppOpsManager) context.getSystemService(Context.APP_OPS_SERVICE);
         mContext = context;
-        mFlags = featureFlags;
     }
 
     /** See {@link IConnectionService#addConnectionServiceAdapter}. */
@@ -2540,7 +2538,7 @@ public class ConnectionServiceWrapper extends ServiceBinder implements
                 isCallerConnectionManager = true;
             }
             ConnectionServiceWrapper service = mConnectionServiceRepository.getService(
-                    handle.getComponentName(), handle.getUserHandle(), mFlags);
+                    handle.getComponentName(), handle.getUserHandle());
             if (service != null && service != this) {
                 simServices.add(service);
             } else {
