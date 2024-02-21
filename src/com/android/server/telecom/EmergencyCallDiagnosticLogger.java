@@ -404,7 +404,12 @@ public class EmergencyCallDiagnosticLogger extends CallsManagerListenerBase
             Log.i(this, "skipped dumping diagnostic data");
             return;
         }
-        dumpDiagnosticDataFromDropbox(pw);
+        try {
+            dumpDiagnosticDataFromDropbox(pw);
+        } catch (Exception e) {
+            pw.println("Exception was thrown while dumping diagnostic data from DropBox");
+            e.printStackTrace();
+        }
     }
 
     private static class CallEventTimestamps {

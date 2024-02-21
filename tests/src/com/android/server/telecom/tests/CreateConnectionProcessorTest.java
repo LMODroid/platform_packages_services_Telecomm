@@ -838,9 +838,10 @@ public class CreateConnectionProcessorTest extends TelecomTestCase {
 
     private ConnectionServiceWrapper makeConnectionServiceWrapper() {
         ConnectionServiceWrapper wrapper = mock(ConnectionServiceWrapper.class);
+
         when(mMockConnectionServiceRepository.getService(
-                eq(makeQuickConnectionServiceComponentName()),
-                any(UserHandle.class), any(FeatureFlags.class))).thenReturn(wrapper);
+                eq(makeQuickConnectionServiceComponentName()), any(UserHandle.class)))
+                .thenReturn(wrapper);
         return wrapper;
     }
 
