@@ -81,12 +81,17 @@ public class TransactionManager {
                     String transactionName) {
                 Log.i(TAG, String.format("transaction %s completed: with result=[%d]",
                         transactionName, result.getResult()));
-                if (result.getResult() == TelecomManager.TELECOM_TRANSACTION_SUCCESS) {
-                    receiver.onResult(result);
-                } else {
-                    receiver.onError(
-                            new CallException(result.getMessage(),
-                                    result.getResult()));
+                try {
+                    if (result.getResult() == TelecomManager.TELECOM_TRANSACTION_SUCCESS) {
+                        receiver.onResult(result);
+                    } else {
+                        receiver.onError(
+                                new CallException(result.getMessage(),
+                                        result.getResult()));
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, String.format("onTransactionCompleted: Notifying transaction result"
+                            + " %s resulted in an Exception.", result), e);
                 }
                 finishTransaction();
             }
@@ -94,8 +99,13 @@ public class TransactionManager {
             @Override
             public void onTransactionTimeout(String transactionName){
                 Log.i(TAG, String.format("transaction %s timeout", transactionName));
-                receiver.onError(new CallException(transactionName + " timeout",
-                        CODE_OPERATION_TIMED_OUT));
+                try {
+                    receiver.onError(new CallException(transactionName + " timeout",
+                            CODE_OPERATION_TIMED_OUT));
+                } catch (Exception e) {
+                    Log.e(TAG, String.format("onTransactionTimeout: Notifying transaction "
+                            + " %s resulted in an Exception.", transactionName), e);
+                }
                 finishTransaction();
             }
         });
