@@ -208,7 +208,6 @@ public class InCallControllerTests extends TelecomTestCase {
     private UserHandle mChildUserHandle = UserHandle.of(10);
     private @Mock Call mMockChildUserCall;
     private UserHandle mParentUserHandle = UserHandle.of(1);
-    private @Mock com.android.internal.telephony.flags.FeatureFlags mTelephonyFeatureFlags;
 
     @Override
     @Before
@@ -239,11 +238,9 @@ public class InCallControllerTests extends TelecomTestCase {
                 mMockPermissionInfo);
         when(mMockContext.getAttributionSource()).thenReturn(new AttributionSource(Process.myUid(),
                 "com.android.server.telecom.tests", null));
-        when(mTelephonyFeatureFlags.workProfileApiSplit()).thenReturn(false);
         mInCallController = new InCallController(mMockContext, mLock, mMockCallsManager,
                 mMockSystemStateHelper, mDefaultDialerCache, mTimeoutsAdapter,
-                mEmergencyCallHelper, mCarModeTracker, mClockProxy, mFeatureFlags,
-                mTelephonyFeatureFlags);
+                mEmergencyCallHelper, mCarModeTracker, mClockProxy, mFeatureFlags);
         // Capture the broadcast receiver registered.
         doAnswer(invocation -> {
             mRegisteredReceiver = invocation.getArgument(0);
@@ -319,6 +316,7 @@ public class InCallControllerTests extends TelecomTestCase {
         when(mMockUserManager.getUserInfo(anyInt())).thenReturn(mMockUserInfo);
         when(mMockUserInfo.isManagedProfile()).thenReturn(true);
         when(mFeatureFlags.separatelyBindToBtIncallService()).thenReturn(false);
+        when(mFeatureFlags.profileUserSupport()).thenReturn(false);
     }
 
     @Override
@@ -1941,7 +1939,7 @@ public class InCallControllerTests extends TelecomTestCase {
                 mMockChildUserInfo);
         when(mMockUserManager.isManagedProfile(mParentUserHandle.getIdentifier())).thenReturn(
                 false);
-        when(mTelephonyFeatureFlags.workProfileApiSplit()).thenReturn(true);
+        when(mFeatureFlags.profileUserSupport()).thenReturn(true);
     }
 
     @Test
