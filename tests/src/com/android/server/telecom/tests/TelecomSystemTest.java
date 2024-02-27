@@ -221,6 +221,8 @@ public class TelecomSystemTest extends TelecomTestCase{
     CallAudioCommunicationDeviceTracker mCommunicationDeviceTracker;
     @Mock
     FeatureFlags mFeatureFlags;
+    @Mock
+    com.android.internal.telephony.flags.FeatureFlags mTelephonyFlags;
 
     final ComponentName mInCallServiceComponentNameX =
             new ComponentName(
@@ -581,7 +583,8 @@ public class TelecomSystemTest extends TelecomTestCase{
                 Runnable::run,
                 Runnable::run,
                 mBlockedNumbersAdapter,
-                mFeatureFlags);
+                mFeatureFlags,
+                mTelephonyFlags);
 
         mComponentContextFixture.setTelecomManager(new TelecomManager(
                 mComponentContextFixture.getTestDouble(),
