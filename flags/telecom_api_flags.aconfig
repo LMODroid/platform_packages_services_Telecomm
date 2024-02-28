@@ -49,3 +49,10 @@ flag{
   description: "Enables enriched calling features (e.g. Business name will show for a call)"
   bug: "311688497"
 }
+
+flag{
+  name: "get_last_known_cell_identity"
+  namespace: "telecom"
+  description: "Formalizes the getLastKnownCellIdentity API that Telecom reliees on as a system api"
+  bug: "327454165"
+}
