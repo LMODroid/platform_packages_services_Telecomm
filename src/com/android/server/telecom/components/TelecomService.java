@@ -234,7 +234,8 @@ public class TelecomService extends Service implements TelecomSystem.Component {
                                             showNotification);
                                 }
                             },
-                            new FeatureFlagsImpl()));
+                            new FeatureFlagsImpl(),
+                            new com.android.internal.telephony.flags.FeatureFlagsImpl()));
         }
     }
 

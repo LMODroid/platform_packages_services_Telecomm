@@ -230,7 +230,8 @@ public class TelecomSystem {
             Executor asyncTaskExecutor,
             Executor asyncCallAudioTaskExecutor,
             BlockedNumbersAdapter blockedNumbersAdapter,
-            FeatureFlags featureFlags) {
+            FeatureFlags featureFlags,
+            com.android.internal.telephony.flags.FeatureFlags telephonyFlags) {
         mContext = context.getApplicationContext();
         mFeatureFlags = featureFlags;
         LogUtils.initLogging(mContext);
@@ -427,6 +428,7 @@ public class TelecomSystem {
                     callStreamingNotification,
                     bluetoothDeviceManager,
                     featureFlags,
+                    telephonyFlags,
                     IncomingCallFilterGraph::new);
 
             mIncomingCallNotifier = incomingCallNotifier;
