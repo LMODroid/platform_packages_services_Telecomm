@@ -4774,19 +4774,7 @@ public class CallsManager extends Call.ListenerBase
      * @return {@code true} if the app has ongoing calls, or {@code false} otherwise.
      */
     public boolean isInSelfManagedCall(String packageName, UserHandle userHandle) {
-        return isInSelfManagedCallCrossUsers(packageName, userHandle, false);
-    }
-
-    /**
-     * Determines if there are any ongoing self-managed calls for the given package/user (unless
-     * hasCrossUsers has been enabled).
-     * @param packageName The package name to check.
-     * @param userHandle The {@link UserHandle} to check.
-     * @param hasCrossUserAccess indicates if calls across all users should be returned.
-     * @return {@code true} if the app has ongoing calls, or {@code false} otherwise.
-     */
-    public boolean isInSelfManagedCallCrossUsers(
-            String packageName, UserHandle userHandle, boolean hasCrossUserAccess) {
+        boolean hasCrossUserAccess = userHandle.equals(UserHandle.ALL);
         return mSelfManagedCallsBeingSetup.stream().anyMatch(c -> c.isSelfManaged()
                 && c.getTargetPhoneAccount().getComponentName().getPackageName().equals(packageName)
                 && (!hasCrossUserAccess
