@@ -2188,11 +2188,16 @@ public class CallsManager extends Call.ListenerBase
                             // At some point, Telecom and Telephony are out of sync with the default
                             // outgoing calling account.
                             if(mFeatureFlags.telephonyHasDefaultButTelecomDoesNot()) {
-                                if (SubscriptionManager.getDefaultVoiceSubscriptionId() !=
-                                        SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
-                                    mAnomalyReporter.reportAnomaly(
-                                            TELEPHONY_HAS_DEFAULT_BUT_TELECOM_DOES_NOT_UUID,
-                                            TELEPHONY_HAS_DEFAULT_BUT_TELECOM_DOES_NOT_MSG);
+                                // SubscriptionManager will throw if FEATURE_TELEPHONY_SUBSCRIPTION
+                                // is not present.
+                                if (mContext.getPackageManager().hasSystemFeature(
+                                        PackageManager.FEATURE_TELEPHONY_SUBSCRIPTION)) {
+                                    if (SubscriptionManager.getDefaultVoiceSubscriptionId() !=
+                                            SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+                                        mAnomalyReporter.reportAnomaly(
+                                                TELEPHONY_HAS_DEFAULT_BUT_TELECOM_DOES_NOT_UUID,
+                                                TELEPHONY_HAS_DEFAULT_BUT_TELECOM_DOES_NOT_MSG);
+                                    }
                                 }
                             }
 
