@@ -82,4 +82,7 @@
 
     <!-- System bluetooth stack package name -->
     <string name="system_bluetooth_stack">com.android.bluetooth</string>
+
+    <!-- When true, skip fetching incoming caller info -->
+    <bool name="skip_incoming_caller_info_query">false</bool>
 </resources>

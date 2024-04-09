@@ -37,6 +37,7 @@ import static org.mockito.Mockito.when;
 import android.content.ComponentName;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.drawable.ColorDrawable;
 import android.net.Uri;
@@ -126,6 +127,9 @@ public class CallTest extends TelecomTestCase {
         doReturn(new ComponentName(mContext, CallTest.class))
                 .when(mMockConnectionService).getComponentName();
         doReturn(UserHandle.CURRENT).when(mMockCallsManager).getCurrentUserHandle();
+        Resources mockResources = mContext.getResources();
+        when(mockResources.getBoolean(R.bool.skip_incoming_caller_info_query))
+                .thenReturn(false);
         EmergencyCallHelper helper = mock(EmergencyCallHelper.class);
         doReturn(helper).when(mMockCallsManager).getEmergencyCallHelper();
     }
@@ -619,6 +623,18 @@ public class CallTest extends TelecomTestCase {
         assertEquals(info.cachedPhoto, call.getPhoto());
         assertEquals(info.cachedPhotoIcon, call.getPhotoIcon());
         assertEquals(call.getHandle(), call.getContactUri());
+    }
+
+    @Test
+    @SmallTest
+    public void testGetFromCallerInfo_skipLookup() {
+        Resources mockResources = mContext.getResources();
+        when(mockResources.getBoolean(R.bool.skip_incoming_caller_info_query))
+                .thenReturn(true);
+
+        createCall("1");
+
+        verify(mMockCallerInfoLookupHelper, never()).startLookup(any(), any());
     }
 
     @Test
