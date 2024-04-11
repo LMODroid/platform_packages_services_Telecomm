@@ -128,15 +128,19 @@ public class CreateConnectionProcessor implements CreateConnectionResponse {
     private final PhoneAccountRegistrar mPhoneAccountRegistrar;
     private final Context mContext;
     private final FeatureFlags mFlags;
+    private final Timeouts.Adapter mTimeoutsAdapter;
     private CreateConnectionTimeout mTimeout;
     private ConnectionServiceWrapper mService;
     private int mConnectionAttempt;
 
     @VisibleForTesting
-    public CreateConnectionProcessor(
-            Call call, ConnectionServiceRepository repository, CreateConnectionResponse response,
-            PhoneAccountRegistrar phoneAccountRegistrar, Context context,
-            FeatureFlags featureFlags) {
+    public CreateConnectionProcessor(Call call,
+            ConnectionServiceRepository repository,
+            CreateConnectionResponse response,
+            PhoneAccountRegistrar phoneAccountRegistrar,
+            Context context,
+            FeatureFlags featureFlags,
+            Timeouts.Adapter timeoutsAdapter) {
         Log.v(this, "CreateConnectionProcessor created for Call = %s", call);
         mCall = call;
         mRepository = repository;
@@ -145,6 +149,7 @@ public class CreateConnectionProcessor implements CreateConnectionResponse {
         mContext = context;
         mConnectionAttempt = 0;
         mFlags = featureFlags;
+        mTimeoutsAdapter = timeoutsAdapter;
     }
 
     boolean isProcessingComplete() {
@@ -317,7 +322,7 @@ public class CreateConnectionProcessor implements CreateConnectionResponse {
         clearTimeout();
 
         CreateConnectionTimeout timeout = new CreateConnectionTimeout(
-                mContext, mPhoneAccountRegistrar, service, mCall);
+                mContext, mPhoneAccountRegistrar, service, mCall, mTimeoutsAdapter);
         if (timeout.isTimeoutNeededForCall(getConnectionServices(mAttemptRecords),
                 attempt.connectionManagerPhoneAccount)) {
             mTimeout = timeout;

@@ -2028,7 +2028,8 @@ public class ConnectionServiceWrapper extends ServiceBinder implements
     }
 
     /** @see IConnectionService#disconnect(String, Session.Info) */
-    void disconnect(Call call) {
+    @VisibleForTesting
+    public void disconnect(Call call) {
         final String callId = mCallIdMapper.getCallId(call);
         if (callId != null && isServiceValid("disconnect")) {
             try {
