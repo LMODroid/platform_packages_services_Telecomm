@@ -128,6 +128,8 @@ public class CallTest extends TelecomTestCase {
                 .when(mMockConnectionService).getComponentName();
         doReturn(UserHandle.CURRENT).when(mMockCallsManager).getCurrentUserHandle();
         Resources mockResources = mContext.getResources();
+        when(mockResources.getBoolean(R.bool.skip_loading_canned_text_response))
+                .thenReturn(false);
         when(mockResources.getBoolean(R.bool.skip_incoming_caller_info_query))
                 .thenReturn(false);
         EmergencyCallHelper helper = mock(EmergencyCallHelper.class);
@@ -962,6 +964,18 @@ public class CallTest extends TelecomTestCase {
         call.putConnectionServiceExtras(extra);
 
         assertTrue(call.getExtras().containsKey(TelecomManager.EXTRA_DO_NOT_LOG_CALL));
+    }
+
+    @Test
+    @SmallTest
+    public void testSkipLoadingCannedTextResponse() {
+        Call call = createCall("any");
+        Resources mockResources = mContext.getResources();
+        when(mockResources.getBoolean(R.bool.skip_loading_canned_text_response))
+                .thenReturn(true);
+
+
+        assertFalse(call.isRespondViaSmsCapable());
     }
 
     private Call createCall(String id) {

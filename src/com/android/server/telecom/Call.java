@@ -3730,6 +3730,11 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
      * SMSes to that number will silently fail.
      */
     public boolean isRespondViaSmsCapable() {
+        if (mContext.getResources().getBoolean(R.bool.skip_loading_canned_text_response)) {
+            Log.d(this, "maybeLoadCannedSmsResponses: skip loading due to setting");
+            return false;
+        }
+
         if (mState != CallState.RINGING) {
             return false;
         }
