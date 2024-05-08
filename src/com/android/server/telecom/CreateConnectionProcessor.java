@@ -63,6 +63,8 @@ public class CreateConnectionProcessor implements CreateConnectionResponse {
         // The PhoneAccount which we will tell the target connection service to use
         // for attempting to make the actual phone call
         public final PhoneAccountHandle targetPhoneAccount;
+        // This field will be set to true if this call attempt used a connection manager
+        public boolean isConnectionManager = false;
 
         public CallAttemptRecord(
                 PhoneAccountHandle connectionManagerPhoneAccount,
@@ -73,9 +75,9 @@ public class CreateConnectionProcessor implements CreateConnectionResponse {
 
         @Override
         public String toString() {
-            return "CallAttemptRecord("
-                    + Objects.toString(connectionManagerPhoneAccount) + ","
-                    + Objects.toString(targetPhoneAccount) + ")";
+            return "CallAttemptRecord( isConnectionManager=[" + isConnectionManager + "], "
+                    + "connMgrPhAcc=[" + connectionManagerPhoneAccount + "], targetPhAcc=["
+                    + targetPhoneAccount + "])";
         }
 
         /**
@@ -198,6 +200,15 @@ public class CreateConnectionProcessor implements CreateConnectionResponse {
 
     boolean hasMorePhoneAccounts() {
         return mAttemptRecordIterator.hasNext();
+    }
+
+    boolean haveAnyAttemptsUsedConnectionManager() {
+        for (CallAttemptRecord attemptRecord : mAttemptRecords) {
+            if (attemptRecord.isConnectionManager) {
+                return true;
+            }
+        }
+        return false;
     }
 
     void continueProcessingIfPossible(CreateConnectionResponse response,
@@ -511,6 +522,7 @@ public class CreateConnectionProcessor implements CreateConnectionResponse {
                             && !mAttemptRecords.contains(callAttemptRecord)) {
                         Log.i(this, "Will try Connection Manager account %s for emergency",
                                 callManager);
+                        callAttemptRecord.isConnectionManager = true;
                         mAttemptRecords.add(callAttemptRecord);
                     }
                 }
