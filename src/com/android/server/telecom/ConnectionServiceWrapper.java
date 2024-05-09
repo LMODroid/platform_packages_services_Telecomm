@@ -385,16 +385,7 @@ public class ConnectionServiceWrapper extends ServiceBinder implements
                             mCallsManager.markCallAsDisconnected(
                                     call, new DisconnectCause(DisconnectCause.REMOTE));
                         }
-                        if (!call.completedProcessingAllAttempts() && call.isEmergencyCall() &&
-                                call.haveAnyAttemptsUsedConnectionManager()) {
-                            // This is the first attempt of an emergency call via a connection
-                            // manager. Skip removing the call for now to allow the second attempt
-                            // to process OTT:
-                            Log.i(this, "removeCall: emergency connMgr call has "
-                                    + "not completed processing all attempts so skipping removal");
-                        } else {
-                            mCallsManager.markCallAsRemoved(call);
-                        }
+                        mCallsManager.markCallAsRemoved(call);
                     }
                 }
             } catch (Throwable t) {
