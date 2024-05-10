@@ -825,7 +825,22 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
      * disconnect message via {@link CallDiagnostics#onCallDisconnected(ImsReasonInfo)} or
      * {@link CallDiagnostics#onCallDisconnected(int, int)}.
      */
-    private CompletableFuture<Boolean> mDisconnectFuture;
+    private CompletableFuture<Boolean> mDiagnosticCompleteFuture;
+
+    /**
+     * {@link CompletableFuture} used to perform disconnect operations after
+     * {@link #mDiagnosticCompleteFuture} has completed.
+     */
+    private CompletableFuture<Void> mDisconnectFuture;
+
+    /**
+     * {@link CompletableFuture} used to perform call removal operations after the
+     * {@link #mDisconnectFuture} has completed.
+     * <p>
+     * Note: It is possible for this future to be cancelled in the case that an internal operation
+     * will be handling clean up. (See {@link #setState}.)
+     */
+    private CompletableFuture<Void> mRemovalFuture;
 
     /**
      * {@link CompletableFuture} used to delay audio routing change for a ringing call until the
@@ -1315,7 +1330,7 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
                         message, null));
             }
 
-            mDisconnectFuture.complete(true);
+            mDiagnosticCompleteFuture.complete(true);
         } else {
             Log.w(this, "handleOverrideDisconnectMessage; callid=%s - got override when unbound",
                     getId());
@@ -1337,6 +1352,12 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
 
             if (newState == CallState.DISCONNECTED && shouldContinueProcessingAfterDisconnect()) {
                 Log.w(this, "continuing processing disconnected call with another service");
+                if (mFlags.cancelRemovalOnEmergencyRedial() && isDisconnectHandledViaFuture()
+                        && isRemovalPending()) {
+                    Log.i(this, "cancelling removal future in favor of "
+                            + "CreateConnectionProcessor handling removal");
+                    mRemovalFuture.cancel(true);
+                }
                 mCreateConnectionProcessor.continueProcessingIfPossible(this, mDisconnectCause);
                 return false;
             } else if (newState == CallState.ANSWERED && mState == CallState.ACTIVE) {
@@ -4747,17 +4768,17 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
      * @param timeoutMillis Timeout we use for waiting for the response.
      * @return the {@link CompletableFuture}.
      */
-    public CompletableFuture<Boolean> initializeDisconnectFuture(long timeoutMillis) {
-        if (mDisconnectFuture == null) {
-            mDisconnectFuture = new CompletableFuture<Boolean>()
+    public CompletableFuture<Boolean> initializeDiagnosticCompleteFuture(long timeoutMillis) {
+        if (mDiagnosticCompleteFuture == null) {
+            mDiagnosticCompleteFuture = new CompletableFuture<Boolean>()
                     .completeOnTimeout(false, timeoutMillis, TimeUnit.MILLISECONDS);
             // After all the chained stuff we will report where the CDS timed out.
-            mDisconnectFuture.thenRunAsync(() -> {
+            mDiagnosticCompleteFuture.thenRunAsync(() -> {
                 if (!mReceivedCallDiagnosticPostCallResponse) {
                     Log.addEvent(this, LogUtils.Events.CALL_DIAGNOSTIC_SERVICE_TIMEOUT);
                 }
                 // Clear the future as a final step.
-                mDisconnectFuture = null;
+                mDiagnosticCompleteFuture = null;
                 },
                 new LoggedHandlerExecutor(mHandler, "C.iDF", mLock))
                     .exceptionally((throwable) -> {
@@ -4765,14 +4786,14 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
                         return null;
                     });
         }
-        return mDisconnectFuture;
+        return mDiagnosticCompleteFuture;
     }
 
     /**
      * @return the disconnect future, if initialized.  Used for chaining operations after creation.
      */
-    public CompletableFuture<Boolean> getDisconnectFuture() {
-        return mDisconnectFuture;
+    public CompletableFuture<Boolean> getDiagnosticCompleteFuture() {
+        return mDiagnosticCompleteFuture;
     }
 
     /**
@@ -4780,7 +4801,7 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
      * if this is handled immediately.
      */
     public boolean isDisconnectHandledViaFuture() {
-        return mDisconnectFuture != null;
+        return mDiagnosticCompleteFuture != null;
     }
 
     /**
@@ -4788,10 +4809,39 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
      * {@code cleanupStuckCalls} request.
      */
     public void cleanup() {
-        if (mDisconnectFuture != null) {
-            mDisconnectFuture.complete(false);
-            mDisconnectFuture = null;
+        if (mDiagnosticCompleteFuture != null) {
+            mDiagnosticCompleteFuture.complete(false);
+            mDiagnosticCompleteFuture = null;
         }
+    }
+
+    /**
+     * Set the pending future to use when the call is disconnected.
+     */
+    public void setDisconnectFuture(CompletableFuture<Void> future) {
+        mDisconnectFuture = future;
+    }
+
+    /**
+     * @return The future that will be executed when the call is disconnected.
+     */
+    public CompletableFuture<Void> getDisconnectFuture() {
+        return mDisconnectFuture;
+    }
+
+    /**
+     * Set the future that will be used when call removal is taking place.
+     */
+    public void setRemovalFuture(CompletableFuture<Void> future) {
+        mRemovalFuture = future;
+    }
+
+    /**
+     * @return {@code true} if there is a pending removal operation that hasn't taken place yet, or
+     * {@code false} if there is no removal pending.
+     */
+    public boolean isRemovalPending() {
+        return mRemovalFuture != null && !mRemovalFuture.isDone();
     }
 
     /**
