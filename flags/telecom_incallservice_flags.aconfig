@@ -14,3 +14,10 @@ flag {
   description: "Ensure that users are able to return to call from keyguard UI for ECC"
   bug: "306582821"
 }
+
+flag {
+  name: "separately_bind_to_bt_incall_service"
+  namespace: "telecom"
+  description: "Binding/Unbinding to BluetoothInCallServices in proper time to improve call audio"
+  bug: "306395598"
+}

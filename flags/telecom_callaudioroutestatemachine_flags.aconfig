@@ -63,3 +63,10 @@ flag {
   description: "Update supported route mask when Bluetooth devices audio connected."
   bug: "301695370"
 }
+
+flag {
+  name: "clear_communication_device_after_audio_ops_complete"
+  namespace: "telecom"
+  description: "Clear the requested communication device after the audio operations are completed."
+  bug: "315865533"
+}
