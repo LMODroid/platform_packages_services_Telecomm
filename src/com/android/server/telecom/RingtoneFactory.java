@@ -35,6 +35,7 @@ import android.text.TextUtils;
 
 import com.android.internal.annotations.VisibleForTesting;
 import android.telecom.CallerInfo;
+import android.util.Pair;
 
 import java.util.List;
 
@@ -54,18 +55,7 @@ public class RingtoneFactory {
         mCallsManager = callsManager;
     }
 
-    /**
-     * Determines if a ringtone has haptic channels.
-     * @param ringtone The ringtone URI.
-     * @return {@code true} if there is a haptic channel, {@code false} otherwise.
-     */
-    public boolean hasHapticChannels(Ringtone ringtone) {
-        boolean hasHapticChannels = RingtoneManager.hasHapticChannels(ringtone.getUri());
-        Log.i(this, "hasHapticChannels %s -> %b", ringtone.getUri(), hasHapticChannels);
-        return hasHapticChannels;
-    }
-
-    public Ringtone getRingtone(Call incomingCall,
+    public Pair<Uri, Ringtone> getRingtone(Call incomingCall,
             @Nullable VolumeShaper.Configuration volumeShaperConfig, boolean hapticChannelsMuted) {
         // Initializing ringtones on the main thread can deadlock
         ThreadUtil.checkNotOnMainThread();
@@ -113,18 +103,19 @@ public class RingtoneFactory {
                 }
             }
 
-            if (defaultRingtoneUri == null) {
+            ringtoneUri = defaultRingtoneUri;
+            if (ringtoneUri == null) {
                 return null;
             }
 
             try {
                 ringtone = RingtoneManager.getRingtone(
-                        contextToUse, defaultRingtoneUri, volumeShaperConfig, audioAttrs);
+                        contextToUse, ringtoneUri, volumeShaperConfig, audioAttrs);
             } catch (Exception e) {
                 Log.e(this, e, "getRingtone: exception while getting ringtone.");
             }
         }
-        return ringtone;
+        return new Pair(ringtoneUri, ringtone);
     }
 
     private AudioAttributes getDefaultRingtoneAudioAttributes(boolean hapticChannelsMuted) {
@@ -137,7 +128,7 @@ public class RingtoneFactory {
 
     /** Returns a ringtone to be used when ringer is not audible for the incoming call. */
     @Nullable
-    public Ringtone getHapticOnlyRingtone() {
+    public Pair<Uri, Ringtone> getHapticOnlyRingtone() {
         // Initializing ringtones on the main thread can deadlock
         ThreadUtil.checkNotOnMainThread();
         Uri ringtoneUri = Uri.parse("file://" + mContext.getString(
@@ -145,12 +136,12 @@ public class RingtoneFactory {
         AudioAttributes audioAttrs = getDefaultRingtoneAudioAttributes(
             /* hapticChannelsMuted */ false);
         Ringtone ringtone = RingtoneManager.getRingtone(
-            mContext, ringtoneUri, /* volumeShaperConfig */ null, audioAttrs);
+                mContext, ringtoneUri, /* volumeShaperConfig */ null, audioAttrs);
         if (ringtone != null) {
             // Make sure the sound is muted.
             ringtone.setVolume(0);
         }
-        return ringtone;
+        return new Pair(ringtoneUri, ringtone);
     }
 
     private Context getWorkProfileContextForUser(UserHandle userHandle) {
