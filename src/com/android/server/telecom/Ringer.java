@@ -55,7 +55,6 @@ import com.android.internal.annotations.VisibleForTesting;
 import com.android.server.telecom.LogUtils.EventTimer;
 import com.android.server.telecom.flags.FeatureFlags;
 
-import com.libremobileos.providers.LMOSettings;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -494,11 +493,11 @@ public class Ringer {
                     }
                     final ContentResolver cr = mContext.getContentResolver();
                     if (Settings.System.getInt(cr,
-                            LMOSettings.System.INCREASING_RING, 0) != 0) {
+                            LMOSettingsKeys.INCREASING_RING, 0) != 0) {
                         float startVolume = Settings.System.getFloat(cr,
-                                LMOSettings.System.INCREASING_RING_START_VOLUME, 0.1f);
+                                LMOSettingsKeys.INCREASING_RING_START_VOLUME, 0.1f);
                         int rampUpTime = Settings.System.getInt(cr,
-                                LMOSettings.System.INCREASING_RING_RAMP_UP_TIME, 20);
+                                LMOSettingsKeys.INCREASING_RING_RAMP_UP_TIME, 20);
                         mVolumeShaperConfig =
                                 new VolumeShaper.Configuration.Builder()
                                         .setDuration(rampUpTime * 1000)
@@ -724,8 +723,8 @@ public class Ringer {
 
         stopRinging();
 
-        if (Settings.System.getIntForUser(mContext.getContentResolver(),
-                LMOSettings.System.VIBRATE_ON_CALLWAITING, 0, UserHandle.USER_CURRENT) >= 1) {
+        if (LMOSettingsKeys.getIntForCurrentUser(mContext,
+                LMOSettingsKeys.VIBRATE_ON_CALLWAITING, 0) >= 1) {
             vibrate(200, 300, 500);
         }
 

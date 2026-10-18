@@ -70,7 +70,6 @@ import com.android.server.telecom.SystemStateHelper.SystemStateListener;
 import com.android.server.telecom.flags.FeatureFlags;
 import com.android.server.telecom.ui.NotificationChannelManager;
 
-import com.libremobileos.providers.LMOSettings;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -1831,10 +1830,10 @@ public class InCallController extends CallsManagerListenerBase implements
         Log.i(this, "onCallStateChanged: Call state changed for %s: %s -> %s", call.getId(),
                 CallState.toString(oldState), CallState.toString(newState));
         maybeTrackMicrophoneUse(isMuted());
-        boolean vibrateOnConnect = Settings.System.getIntForUser(mContext.getContentResolver(),
-            LMOSettings.System.VIBRATE_ON_CONNECT, 0, UserHandle.USER_CURRENT) >= 1;
-        boolean vibrateOnDisconnect = Settings.System.getIntForUser(mContext.getContentResolver(),
-            LMOSettings.System.VIBRATE_ON_DISCONNECT, 0, UserHandle.USER_CURRENT) >= 1;
+        boolean vibrateOnConnect = LMOSettingsKeys.getIntForCurrentUser(mContext,
+            LMOSettingsKeys.VIBRATE_ON_CONNECT, 0) >= 1;
+        boolean vibrateOnDisconnect = LMOSettingsKeys.getIntForCurrentUser(mContext,
+            LMOSettingsKeys.VIBRATE_ON_DISCONNECT, 0) >= 1;
 
         if (oldState == CallState.DIALING && newState == CallState.ACTIVE && vibrateOnConnect) {
             vibrate(100, 200, 0);
